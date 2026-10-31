@@ -75,6 +75,8 @@
 
 <script src="/static/app.js"></script>
 
+
+
   <script>
 (() => {
 "use strict";
@@ -85,11 +87,19 @@ const P = {youtube:["YouTube","youtube.com","youtu.be"],tiktok:["TikTok","tiktok
 const $ = id => document.getElementById(id);
 let hint = "", busy = false;
 
-
 function detect(u) {
   if (!u) return null;
   try { 
-    const h = new URL(u).hostname.toLowerCase();
+    const urlObj = new URL(u);
+    const h = urlObj.hostname.toLowerCase();
+    const path = urlObj.pathname.toLowerCase();
+
+    // ডাইরেক্ট ভিডিও ফাইল চেক
+    if (path.endsWith(".mp4") || path.endsWith(".webm") || path.endsWith(".m3u8") || path.endsWith(".mkv")) {
+      return "direct";
+    }
+    
+    // প্লাটফর্ম চেক
     if (h.includes("snapchat.com")) return "snapchat";
     if (h.includes("youtube.com") || h.includes("youtu.be")) return "youtube";
     if (h.includes("instagram.com")) return "instagram";
@@ -99,7 +109,7 @@ function detect(u) {
     
     for (const k in P) if (P[k].slice(1).some(d => h === d || h.endsWith("." + d))) return k;
   } catch (e) {}
-  return null;
+  return "generic"; // অজানা সাইট হলেও লিংক নেবে
 }
 
 async function api(path, body) {
@@ -110,7 +120,6 @@ async function api(path, body) {
 }
 
 function showErr(m) { $("err").textContent = m; $("err").hidden = !m; }
-
 
 function loadHistory() {
   try {
@@ -157,15 +166,24 @@ function saveHistory(url) {
     alert("Link saved to your device history!");
   } catch (e) {}
 }
-// ------------------------------------
 
 function onInput() {
   const v = $("url").value.trim(), k = detect(v), ask = !!v && !k;
   if (!ask) hint = "";
-  $("chip").hidden = !k; if (k) $("chip").textContent = "✓ " + P[k][0] + " detected";
+  
+  // অজানা সাইট হলেও ডাউনলোড বাটন এনাবল থাকবে
+  $("chip").hidden = !k || k === "generic" || k === "direct"; 
+  if (k && k !== "generic" && k !== "direct") {
+    $("chip").textContent = "✓ " + P[k][0] + " detected";
+  } else if (k === "direct") {
+    $("chip").textContent = "✓ Direct Video Detected";
+    $("chip").hidden = false;
+  }
+  
   $("pick").hidden = !ask;
   document.querySelectorAll("#sites button").forEach(b => b.classList.toggle("on", b.dataset.k === (k || hint)));
-  $("go").disabled = busy || !v || (ask && !hint); showErr("");
+  $("go").disabled = busy || !v; // শুধু খালি থাকলে ডিজেবল হবে
+  showErr("");
 }
 
 function buildPicker() {
@@ -186,14 +204,12 @@ function render(d, currentUrl) {
   d.formats.forEach(f => {
     const a = document.createElement("a"); 
     a.href = f.url; a.target = "_blank"; a.rel = "noopener noreferrer nofollow";
-    
     a.textContent = f.label + " · " + f.ext.toUpperCase() + (f.size ? " · " + (f.size/1048576).toFixed(1) + " MB" : ""); 
     a.style.display = "block";
     a.style.marginBottom = "8px";
     formatList.appendChild(a); 
   });
 
-  // Save to History Button
   const saveBtn = document.createElement("button");
   saveBtn.textContent = "💾 Save Link to History";
   saveBtn.style.marginTop = "15px";
