@@ -89,7 +89,7 @@ let hint = "", busy = false;
 
 function detect(u) {
   if (!u) return null;
-  u = u.toLowerCase();
+  u = u.toLowerCase().trim();
   
   if (u.includes(".mp4") || u.includes(".m3u8") || u.includes(".webm") || u.includes(".mkv")) {
     return "direct";
@@ -105,7 +105,7 @@ function detect(u) {
   for (const k in P) {
     if (P[k].slice(1).some(d => u.includes(d))) return k;
   }
-  return "generic";
+  return "generic"; // treat unknown sites as generic
 }
 
 async function api(path, body) {
@@ -168,15 +168,19 @@ function onInput() {
   hint = ""; 
   
   $("chip").hidden = true;
+  $("pick").hidden = true;
+  
   if (k === "direct") {
     $("chip").textContent = "✓ Direct Video File Detected";
     $("chip").hidden = false;
   } else if (k && k !== "generic") {
     $("chip").textContent = "✓ " + P[k][0] + " detected";
     $("chip").hidden = false;
+  } else if (k === "generic") {
+    $("chip").textContent = "✓ Generic URL Detected";
+    $("chip").hidden = false;
   }
   
-  $("pick").hidden = true; 
   document.querySelectorAll("#sites button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
   $("go").disabled = busy || !v; 
   showErr("");
