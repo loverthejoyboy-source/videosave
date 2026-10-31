@@ -22,7 +22,11 @@ OPTS = {
     "extractor_retries": 1,
     "nocheckcertificate": True, 
     "ignoreerrors": True,
-    "format": "best[ext=mp4]/best"
+    "format": "best[ext=mp4]/best",
+    "http_headers": {
+        "User-Agent": UA,
+        "Accept-Language": "en-US,en;q=0.9"
+    }
 }
 
 def _safe(u):
@@ -60,7 +64,7 @@ def resolve(url):
 def _why(e):
     m = str(e).lower()
     if any(x in m for x in ("sign in to confirm", "not a bot", "429", "too many requests")):
-        return "The platform is blocking our free server right now. Try again later."
+        return "The platform is blocking our free server right now. Try again later or use another link."
     if any(x in m for x in ("login", "log in", "cookies", "private", "age-restricted", "authenticat")):
         return "This video needs a login, is private, or is age-restricted."
     return "Couldn't find a direct video link. Try another link."
@@ -95,37 +99,61 @@ def _build(info):
     th = info.get("thumbnail")
     return {"title": str(info.get("title") or "Video")[:120], "thumb": th if _safe(th) else None, "formats": out[:6]}
 
+def _cobalt_api(url):
+    # Public Cobalt API Fallback for YouTube/Instagram/TikTok
+    apis = [
+        "https://api.cobalt.tools/api/json",
+        "https://co.wuk.sh/api/json"
+    ]
+    for api in apis:
+        try:
+            req = urllib.request.Request(api, data=json.dumps({"url": url}).encode(), headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": UA
+            }, method="POST")
+            with urllib.request.urlopen(req, timeout=15) as r:
+                d = json.loads(r.read(200000))
+                
+            if d.get("status") in ("tunnel", "redirect") and _safe(d.get("url")):
+                return {
+                    "title": "Video",
+                    "thumb": None,
+                    "formats": [{"label": "Best", "ext": "mp4", "size": None, "url": d["url"]}]
+                }
+            elif d.get("status") == "picker":
+                items = []
+                for i, p in enumerate(d.get("picker") or [], 1):
+                    if isinstance(p, dict) and _safe(p.get("url")):
+                        items.append({"label": f"Video {i}", "ext": "mp4", "size": None, "url": p["url"]})
+                if items:
+                    return {"title": "Video", "thumb": None, "formats": items}
+        except Exception as e:
+            print(f"Cobalt API failed: {type(e).__name__}", flush=True)
+            continue
+    return None
+
 def _snapchat_extract(url):
     match = re.search(r'snapchat\.com/(?:add/|@)([a-zA-Z0-9._-]+)', url)
     if not match:
         return None
-    
     username = match.group(1)
-    
-    # Environment variable theke token read kora hoche
     APIFY_TOKEN = os.environ.get("APIFY_TOKEN", "")
     
     if not APIFY_TOKEN:
-        print("Apify token not configured in Environment Variables, skipping Snapchat", flush=True)
+        print("Apify token not configured.", flush=True)
         return None
     
     try:
         actor_id = "maximedupre~snapchat-story-viewer"
         run_url = f"https://api.apify.com/v2/acts/{actor_id}/run-sync-get-dataset-items?token={APIFY_TOKEN}"
+        resp = requests.post(run_url, json={"profiles": [f"@{username}"], "maxItems": 20}, timeout=60)
         
-        payload = {
-            "profiles": [f"@{username}"],
-            "maxItems": 20
-        }
-        
-        resp = requests.post(run_url, json=payload, timeout=60)
         if resp.status_code != 200:
-            print(f"Apify error: {resp.status_code} - {resp.text[:200]}", flush=True)
             return None
         
         data = resp.json()
-        if not data:
-            return None
+        if not data: return None
         
         formats = []
         title = username
@@ -142,23 +170,20 @@ def _snapchat_extract(url):
                 if media_url and _safe(media_url):
                     media_type = snap.get("mediaType", "video")
                     ext = "mp4" if media_type == "video" else "jpg"
-                    formats.append({
-                        "label": f"{media_type.title()} {len(formats)+1}",
-                        "ext": ext,
-                        "size": None,
-                        "url": media_url
-                    })
+                    formats.append({"label": f"{media_type.title()} {len(formats)+1}", "ext": ext, "size": None, "url": media_url})
         
         if formats:
             return {"title": title, "thumb": thumb, "formats": formats[:12]}
-            
-    except Exception as e:
-        print(f"Snapchat Apify failed: {type(e).__name__}", flush=True)
-    
+    except Exception:
+        pass
     return None
 
 def _scrape_html(url):
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    req = urllib.request.Request(url, headers={
+        "User-Agent": UA,
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": url
+    })
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             html = r.read(2000000).decode('utf-8', errors='ignore')
@@ -167,28 +192,17 @@ def _scrape_html(url):
             if matches:
                 video_url = matches[0].replace('\\/', '/')
                 ext = "m3u8" if ".m3u8" in video_url else ("webm" if ".webm" in video_url else "mp4")
-                
                 title = "Video"
                 t_match = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
                 if t_match: title = t_match.group(1).strip()[:120]
-                
-                return {
-                    "title": title,
-                    "thumb": None,
-                    "formats": [{"label": "Best Available", "ext": ext, "size": None, "url": video_url}]
-                }
+                return {"title": title, "thumb": None, "formats": [{"label": "Best Available", "ext": ext, "size": None, "url": video_url}]}
             
             soup = BeautifulSoup(html, 'html.parser')
             for tag in soup.find_all(['video', 'source']):
                 src = tag.get('src')
                 if src and src.startswith('http'):
                     ext = "mp4" if ".mp4" in src else "m3u8"
-                    return {
-                        "title": soup.title.string if soup.title else "Video",
-                        "thumb": None,
-                        "formats": [{"label": "Video", "ext": ext, "size": None, "url": src}]
-                    }
-
+                    return {"title": soup.title.string if soup.title else "Video", "thumb": None, "formats": [{"label": "Video", "ext": ext, "size": None, "url": src}]}
     except Exception as e:
         print("Scrape failed:", type(e).__name__, str(e)[:200], flush=True)
     return None
@@ -216,6 +230,10 @@ def extract(url):
         err = e; print("yt-dlp failed:", type(e).__name__, str(e)[:200], flush=True)
     finally:
         _sem.release()
+        
+    # Cobalt API Fallback (YouTube / Instagram IP Block Bypass)
+    res = _cobalt_api(url)
+    if res: return res
         
     res = _scrape_html(url)
     if res: return res
