@@ -1,3 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clipkeep – Keep your videos close</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="theme-color" content="#4a33ff">
+<link rel="stylesheet" href="/static/style.css">
+
+</head>
+<body>
+<div class="top">Download only content you own or have permission to save. <a href="#" id="tosLink2">Read the terms</a></div>
+<header>
+  <a class="brand" href="/">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Clip<b>keep</b>
+  </a>
+  <a class="navbtn" href="#" id="tosLink">Terms &amp; DMCA</a>
+</header>
+<main>
+  <section class="hero">
+    <p class="badge"><i></i>Universal Video Downloader</p>
+    <h1><span>Keep your</span><span>videos</span><span class="acc">close.</span></h1>
+    <p class="sub">Paste a video link from any supported site. We detect it and give you a direct download in seconds.</p>
+    <p class="fine">No sign-up · No extensions · Nothing stored on our servers</p>
+    <div class="bar">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></g></svg>
+      <input id="url" type="url" inputmode="url" autocomplete="off" maxlength="400" placeholder="Paste a video URL..." aria-label="Video link" disabled>
+      <button id="go" disabled><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="goLabel">Download</span></button>
+    </div>
+    <input id="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+    
+    <!-- Local Storage History Section -->
+    <div id="historyContainer" class="history-wrap" hidden></div>
+
+    <p id="chip" class="status" hidden></p>
+    <p id="pick" class="status" hidden>We couldn’t recognise this site. Tap the site your link is from:</p>
+    <div id="sites" class="sites" role="group" aria-label="Supported platforms"></div>
+    <div id="load" class="load" hidden><span></span><p>Fetching video details…</p></div>
+    <p id="err" class="err" role="alert" hidden></p>
+    <div class="ghostword" aria-hidden="true">KEEPING</div>
+  </section>
+
+  <section id="res" class="result" hidden>
+    <img id="th" alt="" referrerpolicy="no-referrer">
+    <div class="info">
+      <h2 id="ti"></h2>
+      <p class="ready">Your file is ready. Choose a quality:</p>
+      <div id="fm" class="list"></div>
+      <p class="hint">The video opens in a new tab. Tap ⋮ → Download, or right-click → Save video as.</p>
+    </div>
+  </section>
+</main>
+<footer>© Clipkeep. Not affiliated with any video platform. <a href="#" id="tosLink3">Terms &amp; DMCA</a></footer>
+
+<div id="terms" class="modal" role="dialog" aria-modal="true" aria-labelledby="tt">
+  <div class="card">
+    <h2 id="tt">Terms &amp; Conditions (v1.1)</h2>
+    <ul>
+      <li>You are at least 21 years old (or the age of majority where you live) and accept full responsibility for your use.</li>
+      <li>You are solely responsible for anything you download and how you use it.</li>
+      <li>You confirm you own the content or have the legal right to download it.</li>
+      <li>This site does not host, store or distribute any video files. Downloads happen only on your device.</li>
+      <li>The site owner and host accept no liability for your use of this service.</li>
+      <li>We comply with the DMCA and will remove features on a valid notice.</li>
+      <li>Not affiliated with YouTube, TikTok, Meta, X or any other platform.</li>
+    </ul>
+    <button id="agree">I agree</button>
+    <button id="close" class="ghost" hidden>Close</button>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
 <script>
 (() => {
 "use strict";
@@ -24,7 +100,7 @@ async function api(path, body) {
 
 function showErr(m) { $("err").textContent = m; $("err").hidden = !m; }
 
-
+// --- শুধুমাত্র ম্যানুয়ালি সেভ করার লজিক ---
 function loadHistory() {
   try {
     const hist = JSON.parse(localStorage.getItem("clipkeep_history") || "[]");
@@ -64,7 +140,7 @@ function saveHistory(url) {
     let hist = JSON.parse(localStorage.getItem("clipkeep_history") || "[]");
     hist = hist.filter(h => h !== url);
     hist.unshift(url);
-    hist = hist.slice(0, 10); 
+    hist = hist.slice(0, 10); // ১০টি লিংক সেভ থাকবে
     localStorage.setItem("clipkeep_history", JSON.stringify(hist));
     loadHistory();
     alert("Link saved to your device history!");
@@ -105,7 +181,7 @@ function render(d, currentUrl) {
     formatList.appendChild(a); 
   });
 
- 
+  // Save to History Button
   const saveBtn = document.createElement("button");
   saveBtn.textContent = "💾 Save Link to History";
   saveBtn.style.marginTop = "15px";
@@ -129,7 +205,7 @@ async function go() {
   try {
     const d = await api("/api/parse", body);
     render(d, currentUrl);
-    
+    // আর অটোমেটিক্যালি সেভ হবে না, render ফাংশনে বাটন দেওয়া হলো
   } catch (e) { 
     showErr(e.message); 
   }
@@ -158,3 +234,5 @@ $("agree").addEventListener("click", () => {
 modal(false);
 })();
 </script>
+</body>
+</html>
