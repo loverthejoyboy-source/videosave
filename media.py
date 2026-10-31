@@ -11,7 +11,6 @@ class Busy(Exception): pass
 class Fail(Exception):
     def __init__(self, msg): super().__init__(msg); self.msg = msg
 
-# আপডেট করা OPTS (allowed_extractors বাদ দেওয়া হয়েছে যাতে যেকোনো সাইট কাজ করে)
 OPTS = {
     "quiet": True, 
     "no_warnings": True, 
@@ -20,8 +19,7 @@ OPTS = {
     "playlist_items": "1", 
     "socket_timeout": 15, 
     "extractor_retries": 1,
-    "nocheckcertificate": True, 
-    "ignoreerrors": True
+    "nocheckcertificate": True
 }
 
 def _safe(u):
@@ -50,7 +48,8 @@ def resolve(url):
         except urllib.error.HTTPError as e:
             loc = e.headers.get("Location") if e.code in (301, 302, 303, 307, 308) else None
             if not loc: return url
-            nxt = check(urljoin(url, loc))
+            full = urljoin(url, loc)
+            nxt = check(full) or check(full.split("#")[0].split("?")[0])  # long tracking queries
             if not nxt: raise Fail("This short link points to an unsupported site.")
             url = nxt[1]
         except Exception:

@@ -60,3 +60,10 @@ footer{text-align:center;color:var(--mute);font-size:.8rem;padding:20px;border-t
 @media(max-width:560px){.bar{flex-direction:column;align-items:stretch;padding:12px}.bar>svg{display:none}#go{width:100%;justify-content:center}.card button{width:100%;margin:6px 0 0}}
 @media(max-height:480px) and (orientation:landscape){.hero{padding-top:4vh}.modal{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){.load span::after{animation:none;width:100%}}
+
+/* Recent links (local storage) */
+  
+  .history-wrap { margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .history-chip { background: #f0f0f5; border: 1px solid #ddd; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #333; transition: 0.2s; }
+  .history-chip:hover { background: #e0e0e5; }
+  .history-chip span { color: #888; margin-left: 5px; font-weight: bold; }
