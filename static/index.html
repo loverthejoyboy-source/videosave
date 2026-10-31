@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Clipkeep – Keep your videos close</title>
-<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="/static/favicon-32.png" type="image/png" sizes="32x32">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-<meta name="theme-color" content="#4a33ff">
 <link rel="stylesheet" href="/static/style.css">
-
+<style>
+  .history-wrap { margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .history-chip { background: #f0f0f5; border: 1px solid #ddd; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #333; transition: 0.2s; }
+  .history-chip:hover { background: #e0e0e5; }
+  .history-chip span { color: #888; margin-left: 5px; font-weight: bold; }
+</style>
 </head>
 <body>
 <div class="top">Download only content you own or have permission to save. <a href="#" id="tosLink2">Read the terms</a></div>
@@ -33,9 +34,7 @@
     </div>
     <input id="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     
-    
-    <div id="historyContainer" class="history-wrap" hidden></div>
-
+    <div id="historyContainer" class="history-wrap" style="display: none;"></div>
     <p id="chip" class="status" hidden></p>
     <p id="pick" class="status" hidden>We couldn’t recognise this site. Tap the site your link is from:</p>
     <div id="sites" class="sites" role="group" aria-label="Supported platforms"></div>
@@ -73,10 +72,6 @@
   </div>
 </div>
 
-<script src="/static/app.js"></script>
-
-
-
 <script>
 (() => {
 "use strict";
@@ -105,7 +100,7 @@ function detect(u) {
   for (const k in P) {
     if (P[k].slice(1).some(d => u.includes(d))) return k;
   }
-  return "generic"; // treat unknown sites as generic
+  return "generic";
 }
 
 async function api(path, body) {
@@ -167,20 +162,18 @@ function onInput() {
   const v = $("url").value.trim(), k = detect(v);
   hint = ""; 
   
-  $("chip").hidden = true;
-  $("pick").hidden = true;
-  
+  $("chip").hidden = false;
   if (k === "direct") {
     $("chip").textContent = "✓ Direct Video File Detected";
-    $("chip").hidden = false;
-  } else if (k && k !== "generic") {
-    $("chip").textContent = "✓ " + P[k][0] + " detected";
-    $("chip").hidden = false;
   } else if (k === "generic") {
-    $("chip").textContent = "✓ Generic URL Detected";
-    $("chip").hidden = false;
+    $("chip").textContent = "✓ Generic Link Detected";
+  } else if (k) {
+    $("chip").textContent = "✓ " + P[k][0] + " detected";
+  } else {
+    $("chip").hidden = true;
   }
   
+  $("pick").hidden = true;
   document.querySelectorAll("#sites button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
   $("go").disabled = busy || !v; 
   showErr("");
@@ -235,7 +228,7 @@ function render(d, currentUrl) {
 async function go() {
   busy = true; $("go").disabled = true; $("goLabel").textContent = "Working…"; $("load").hidden = false; $("res").hidden = true; showErr("");
   const currentUrl = $("url").value.trim();
-  const body = {url: currentUrl, platform: hint, website: $("website").value};
+  const body = {url: currentUrl}; // Removed platform hint to avoid mismatch errors
   
   try {
     const d = await api("/api/parse", body);
@@ -268,9 +261,5 @@ $("agree").addEventListener("click", () => {
 modal(false);
 })();
 </script>
-
-  
-
-  
 </body>
 </html>
