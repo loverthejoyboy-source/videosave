@@ -26,6 +26,11 @@ OPTS = {
     "http_headers": {
         "User-Agent": UA,
         "Accept-Language": "en-US,en;q=0.9"
+    },
+    "extractor_args": {
+        "youtube": {
+            "player_client": ["android", "web_safari"]
+        }
     }
 }
 
@@ -100,7 +105,6 @@ def _build(info):
     return {"title": str(info.get("title") or "Video")[:120], "thumb": th if _safe(th) else None, "formats": out[:6]}
 
 def _cobalt_api(url):
-    # Public Cobalt API Fallback for YouTube/Instagram/TikTok
     apis = [
         "https://api.cobalt.tools/api/json",
         "https://co.wuk.sh/api/json"
@@ -231,7 +235,6 @@ def extract(url):
     finally:
         _sem.release()
         
-    # Cobalt API Fallback (YouTube / Instagram IP Block Bypass)
     res = _cobalt_api(url)
     if res: return res
         
