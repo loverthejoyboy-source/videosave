@@ -10,9 +10,13 @@
   .history-chip { background: #f0f0f5; border: 1px solid #ddd; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #333; transition: 0.2s; }
   .history-chip:hover { background: #e0e0e5; }
   .history-chip span { color: #888; margin-left: 5px; font-weight: bold; }
+  
+  /* Hide elements initially if terms are not accepted */
+  body.terms-locked #url, body.terms-locked #go, body.terms-locked #sites, body.terms-locked #chip, body.terms-locked #pick { pointer-events: none; opacity: 0.5; }
+  body.terms-accepted #terms { display: none !important; }
 </style>
 </head>
-<body>
+<body class="terms-locked">
 <div class="top">Download only content you own or have permission to save. <a href="#" id="tosLink2">Read the terms</a></div>
 <header>
   <a class="brand" href="/">
@@ -67,7 +71,8 @@
       <li>We comply with the DMCA and will remove features on a valid notice.</li>
       <li>Not affiliated with YouTube, TikTok, Meta, X or any other platform.</li>
     </ul>
-    <button id="agree">I agree</button>
+    <!-- Changed button to anchor tag for no-JS bypass -->
+    <a id="agree-btn" href="#" style="display:inline-block; text-align:center; text-decoration:none; background:#fff; color:#000; padding:10px 20px; border:none; font-family:inherit; font-size:1rem; font-weight:bold; cursor:pointer; margin-top:20px;">I agree</a>
     <button id="close" class="ghost" hidden>Close</button>
   </div>
 </div>
@@ -81,6 +86,30 @@ const P = {youtube:["YouTube","youtube.com","youtu.be"],tiktok:["TikTok","tiktok
   vimeo:["Vimeo","vimeo.com"],dailymotion:["Dailymotion","dailymotion.com"],reddit:["Reddit","reddit.com"]};
 const $ = id => document.getElementById(id);
 let hint = "", busy = false;
+
+// --- TOS Logic without errors ---
+function checkTOS() {
+  try {
+    const tos = JSON.parse(localStorage.getItem("tos") || "{}");
+    if (tos.v === V) {
+      document.body.classList.remove("terms-locked");
+      document.body.classList.add("terms-accepted");
+      $("url").disabled = false;
+    }
+  } catch(e) {}
+}
+
+$("agree-btn").addEventListener("click", (e) => {
+  e.preventDefault();
+  try { localStorage.setItem("tos", JSON.stringify({v:V, t:Date.now()})); } catch(e) {}
+  document.body.classList.remove("terms-locked");
+  document.body.classList.add("terms-accepted");
+  $("url").disabled = false;
+  $("url").focus();
+});
+
+checkTOS();
+// --------------------------------
 
 function detect(u) {
   if (!u) return null;
@@ -240,7 +269,7 @@ async function go() {
   busy = false; $("goLabel").textContent = "Download"; $("load").hidden = true; onInput();
 }
 
-function modal(readonly) { $("terms").hidden = false; $("agree").hidden = readonly; $("close").hidden = !readonly; }
+function modal(readonly) { $("terms").hidden = false; $("close").hidden = !readonly; }
 
 buildPicker();
 loadHistory();
@@ -251,14 +280,11 @@ $("url").addEventListener("keydown", e => { if (e.key === "Enter" && !$("go").di
 ["tosLink","tosLink2","tosLink3"].forEach(id => $(id).addEventListener("click", e => { e.preventDefault(); modal(true); }));
 $("close").addEventListener("click", () => { $("terms").hidden = true; });
 
-$("agree").addEventListener("click", () => {
-  try { localStorage.setItem("tos", JSON.stringify({v:V, t:Date.now()})); } catch (e) {}
-  $("terms").hidden = true; 
-  $("url").disabled = false; 
-  $("url").focus(); 
-});
+// Explicitly check if terms button click is working
+if(!localStorage.getItem("tos")) {
+  $("terms").hidden = false;
+}
 
-modal(false);
 })();
 </script>
 </body>
