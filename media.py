@@ -202,11 +202,31 @@ def _scrape_html(url):
                 return {"title": title, "thumb": None, "formats": [{"label": "Best Available", "ext": ext, "size": None, "url": video_url}]}
             
             soup = BeautifulSoup(html, 'html.parser')
+            
+            iframe = soup.find('iframe')
+            if iframe and iframe.get('src'):
+                iframe_url = iframe.get('src')
+                if iframe_url.startswith('//'): iframe_url = 'https:' + iframe_url
+                elif iframe_url.startswith('/'): iframe_url = urljoin(url, iframe_url)
+                
+                try:
+                    req2 = urllib.request.Request(iframe_url, headers={"User-Agent": UA, "Referer": url})
+                    with urllib.request.urlopen(req2, timeout=15) as r2:
+                        html2 = r2.read(2000000).decode('utf-8', errors='ignore')
+                        matches2 = re.findall(r'https?://[^\s"\'<>]+\.(?:mp4|m3u8|webm)[^\s"\'<>]*', html2)
+                        if matches2:
+                            video_url = matches2[0].replace('\\/', '/')
+                            ext = "m3u8" if ".m3u8" in video_url else "mp4"
+                            return {"title": "Video", "thumb": None, "formats": [{"label": "Iframe Video", "ext": ext, "size": None, "url": video_url}]}
+                except Exception:
+                    pass
+
             for tag in soup.find_all(['video', 'source']):
                 src = tag.get('src')
                 if src and src.startswith('http'):
                     ext = "mp4" if ".mp4" in src else "m3u8"
                     return {"title": soup.title.string if soup.title else "Video", "thumb": None, "formats": [{"label": "Video", "ext": ext, "size": None, "url": src}]}
+                    
     except Exception as e:
         print("Scrape failed:", type(e).__name__, str(e)[:200], flush=True)
     return None
