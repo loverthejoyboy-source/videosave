@@ -33,7 +33,7 @@
     </div>
     <input id="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     
-    <!-- Local Storage History Section -->
+    
     <div id="historyContainer" class="history-wrap" hidden></div>
 
     <p id="chip" class="status" hidden></p>
@@ -74,7 +74,8 @@
 </div>
 
 <script src="/static/app.js"></script>
-<script>
+
+  <script>
 (() => {
 "use strict";
 const V = "1.1";
@@ -84,8 +85,18 @@ const P = {youtube:["YouTube","youtube.com","youtu.be"],tiktok:["TikTok","tiktok
 const $ = id => document.getElementById(id);
 let hint = "", busy = false;
 
+
 function detect(u) {
-  try { const h = new URL(u).hostname.toLowerCase();
+  if (!u) return null;
+  try { 
+    const h = new URL(u).hostname.toLowerCase();
+    if (h.includes("snapchat.com")) return "snapchat";
+    if (h.includes("youtube.com") || h.includes("youtu.be")) return "youtube";
+    if (h.includes("instagram.com")) return "instagram";
+    if (h.includes("tiktok.com")) return "tiktok";
+    if (h.includes("facebook.com") || h.includes("fb.watch")) return "facebook";
+    if (h.includes("twitter.com") || h.includes("x.com")) return "x";
+    
     for (const k in P) if (P[k].slice(1).some(d => h === d || h.endsWith("." + d))) return k;
   } catch (e) {}
   return null;
@@ -100,7 +111,7 @@ async function api(path, body) {
 
 function showErr(m) { $("err").textContent = m; $("err").hidden = !m; }
 
-// --- শুধুমাত্র ম্যানুয়ালি সেভ করার লজিক ---
+
 function loadHistory() {
   try {
     const hist = JSON.parse(localStorage.getItem("clipkeep_history") || "[]");
@@ -140,7 +151,7 @@ function saveHistory(url) {
     let hist = JSON.parse(localStorage.getItem("clipkeep_history") || "[]");
     hist = hist.filter(h => h !== url);
     hist.unshift(url);
-    hist = hist.slice(0, 10); // ১০টি লিংক সেভ থাকবে
+    hist = hist.slice(0, 10); 
     localStorage.setItem("clipkeep_history", JSON.stringify(hist));
     loadHistory();
     alert("Link saved to your device history!");
@@ -175,6 +186,7 @@ function render(d, currentUrl) {
   d.formats.forEach(f => {
     const a = document.createElement("a"); 
     a.href = f.url; a.target = "_blank"; a.rel = "noopener noreferrer nofollow";
+    
     a.textContent = f.label + " · " + f.ext.toUpperCase() + (f.size ? " · " + (f.size/1048576).toFixed(1) + " MB" : ""); 
     a.style.display = "block";
     a.style.marginBottom = "8px";
@@ -205,7 +217,6 @@ async function go() {
   try {
     const d = await api("/api/parse", body);
     render(d, currentUrl);
-    // আর অটোমেটিক্যালি সেভ হবে না, render ফাংশনে বাটন দেওয়া হলো
   } catch (e) { 
     showErr(e.message); 
   }
@@ -234,5 +245,7 @@ $("agree").addEventListener("click", () => {
 modal(false);
 })();
 </script>
+
+  
 </body>
 </html>
