@@ -83,7 +83,7 @@ const P = {youtube:["YouTube","youtube.com","youtu.be"],tiktok:["TikTok","tiktok
   facebook:["Facebook","facebook.com","fb.watch"],x:["X (Twitter)","x.com","twitter.com"],snapchat:["Snapchat","snapchat.com"],
   vimeo:["Vimeo","vimeo.com"],dailymotion:["Dailymotion","dailymotion.com"],reddit:["Reddit","reddit.com"]};
 const $ = id => document.getElementById(id);
-let token = "", hint = "", busy = false;
+let hint = "", busy = false;
 
 function detect(u) {
   try { const h = new URL(u).hostname.toLowerCase();
@@ -92,14 +92,14 @@ function detect(u) {
   return null;
 }
 
-async function api(path, body, tok) {
-  const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json","X-Token":tok||""}, body:JSON.stringify(body)});
+// API কল করার ফাংশন (টোকেন ছাড়া)
+async function api(path, body) {
+  const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
   let j = {}; try { j = await r.json(); } catch (e) {}
   if (!r.ok) { const e = new Error(j.error || "Something went wrong."); e.kind = j.kind; throw e; }
   return j;
 }
 
-async function getToken() { token = (await api("/api/token", {agree:true, v:V})).token; }
 function showErr(m) { $("err").textContent = m; $("err").hidden = !m; }
 
 // --- LOCAL STORAGE HISTORY LOGIC ---
@@ -113,19 +113,16 @@ function loadHistory() {
     hist.forEach(url => {
       const chip = document.createElement("div");
       chip.className = "history-chip";
-      // Shorten URL for display
       const shortUrl = url.length > 30 ? url.substring(0, 27) + "..." : url;
       chip.innerHTML = `🔗 ${shortUrl} <span>×</span>`;
       
-      // Load link on click
       chip.onclick = (e) => {
-        if(e.target.tagName === 'SPAN') return; // Ignore if clicked on 'x'
+        if(e.target.tagName === 'SPAN') return; 
         $("url").value = url;
         onInput();
         go();
       };
       
-      // Remove from history on 'x' click
       chip.querySelector("span").onclick = (e) => {
         e.stopPropagation();
         const newHist = hist.filter(h => h !== url);
@@ -143,9 +140,9 @@ function saveHistory(url) {
   if (!url) return;
   try {
     let hist = JSON.parse(localStorage.getItem("clipkeep_history") || "[]");
-    hist = hist.filter(h => h !== url); // Remove if exists
-    hist.unshift(url); // Add to top
-    hist = hist.slice(0, 5); // Keep only last 5
+    hist = hist.filter(h => h !== url);
+    hist.unshift(url);
+    hist = hist.slice(0, 5);
     localStorage.setItem("clipkeep_history", JSON.stringify(hist));
     loadHistory();
   } catch (e) {}
@@ -186,15 +183,9 @@ async function go() {
   const body = {url: currentUrl, platform: hint, website: $("website").value};
   
   try {
-    let d;
-    try { d = await api("/api/parse", body, token); }
-    catch (e) { 
-      if (e.kind !== "token") throw e; 
-      await getToken(); 
-      d = await api("/api/parse", body, token); 
-    }
+    const d = await api("/api/parse", body);
     render(d);
-    saveHistory(currentUrl); // Save to Local Storage on success
+    saveHistory(currentUrl);
   } catch (e) { 
     showErr(e.message); 
   }
@@ -205,19 +196,22 @@ async function go() {
 function modal(readonly) { $("terms").hidden = false; $("agree").hidden = readonly; $("close").hidden = !readonly; }
 
 buildPicker();
-loadHistory(); // Load history on page start
+loadHistory();
 
 $("url").addEventListener("input", onInput);
 $("go").addEventListener("click", go);
 $("url").addEventListener("keydown", e => { if (e.key === "Enter" && !$("go").disabled) go(); });
 ["tosLink","tosLink2","tosLink3"].forEach(id => $(id).addEventListener("click", e => { e.preventDefault(); modal(true); }));
 $("close").addEventListener("click", () => { $("terms").hidden = true; });
-$("agree").addEventListener("click", async () => {
-  $("agree").disabled = true;
-  try { await getToken(); } catch (e) { $("agree").disabled = false; alert(e.message); return; }
+
+// আপডেট করা "I Agree" বাটনের লজিক (সাথে সাথে কাজ করবে)
+$("agree").addEventListener("click", () => {
   try { localStorage.setItem("tos", JSON.stringify({v:V, t:Date.now()})); } catch (e) {}
-  $("terms").hidden = true; $("url").disabled = false; $("url").focus(); $("agree").disabled = false;
+  $("terms").hidden = true; 
+  $("url").disabled = false; 
+  $("url").focus(); 
 });
+
 modal(false);
 })();
 </script>
