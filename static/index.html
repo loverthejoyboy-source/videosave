@@ -4,14 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Clipkeep – Keep your videos close</title>
-<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="/static/favicon-32.png" type="image/png" sizes="32x32">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-<meta name="theme-color" content="#4a33ff">
 <link rel="stylesheet" href="/static/style.css">
-
+<style>
+  .history-wrap { margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .history-chip { background: #f0f0f5; border: 1px solid #ddd; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #333; transition: 0.2s; }
+  .history-chip:hover { background: #e0e0e5; }
+  .history-chip span { color: #888; margin-left: 5px; font-weight: bold; }
+</style>
 </head>
-<body class="terms-locked">
+<body>
+
 <div class="top">Download only content you own or have permission to save. <a href="#" id="tosLink2">Read the terms</a></div>
 <header>
   <a class="brand" href="/">
@@ -28,14 +30,12 @@
     <p class="fine">No sign-up · No extensions · Nothing stored on our servers</p>
     <div class="bar">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></g></svg>
-      <input id="url" type="url" inputmode="url" autocomplete="off" maxlength="400" placeholder="Paste a video URL..." aria-label="Video link" disabled>
-      <button id="go" disabled><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="goLabel">Download</span></button>
+      <input id="url" type="url" inputmode="url" autocomplete="off" maxlength="400" placeholder="Paste a video URL...">
+      <button id="go"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="goLabel">Download</span></button>
     </div>
     <input id="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     
-    <!-- Local Storage History Section -->
-    <div id="historyContainer" class="history-wrap"></div>
-
+    <div id="historyContainer" class="history-wrap" style="display: none;"></div>
     <p id="chip" class="status" hidden></p>
     <p id="pick" class="status" hidden>We couldn’t recognise this site. Tap the site your link is from:</p>
     <div id="sites" class="sites" role="group" aria-label="Supported platforms"></div>
@@ -56,9 +56,9 @@
 </main>
 <footer>© Clipkeep. Not affiliated with any video platform. <a href="#" id="tosLink3">Terms &amp; DMCA</a></footer>
 
-<div id="terms" class="modal" role="dialog" aria-modal="true" aria-labelledby="tt">
+<div id="terms" class="modal" role="dialog" aria-modal="true">
   <div class="card">
-    <h2 id="tt">Terms &amp; Conditions (v1.1)</h2>
+    <h2>Terms &amp; Conditions (v1.1)</h2>
     <ul>
       <li>You are at least 21 years old (or the age of majority where you live) and accept full responsibility for your use.</li>
       <li>You are solely responsible for anything you download and how you use it.</li>
@@ -68,11 +68,128 @@
       <li>We comply with the DMCA and will remove features on a valid notice.</li>
       <li>Not affiliated with YouTube, TikTok, Meta, X or any other platform.</li>
     </ul>
-    <a id="agree-btn" href="#">I agree</a>
-    <button id="close" class="ghost" hidden>Close</button>
+    <button id="agree" style="margin-top: 20px;">I agree</button>
+    <button id="close" class="ghost" style="display:none; margin-top: 20px;">Close</button>
   </div>
 </div>
 
-<script src="/static/app.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const P = {youtube:["YouTube","youtube.com","youtu.be"],tiktok:["TikTok","tiktok.com"],instagram:["Instagram","instagram.com"],
+    facebook:["Facebook","facebook.com","fb.watch"],x:["X (Twitter)","x.com","twitter.com"],snapchat:["Snapchat","snapchat.com"],
+    vimeo:["Vimeo","vimeo.com"],dailymotion:["Dailymotion","dailymotion.com"],reddit:["Reddit","reddit.com"]};
+  const $ = id => document.getElementById(id);
+  let hint = "", busy = false;
+
+  // TOS HANDLING
+  const termsModal = $("terms");
+  const agreeBtn = $("agree");
+  
+  // By default, show the modal
+  termsModal.style.display = "flex"; 
+  
+  // Agree button logic
+  agreeBtn.onclick = function() {
+    termsModal.style.display = "none";
+    $("url").focus();
+    try { localStorage.setItem("tos", "agreed"); } catch(e){}
+  };
+
+  if (localStorage.getItem("tos") === "agreed") {
+    termsModal.style.display = "none";
+  }
+
+  // DETECT
+  function detect(u) {
+    if (!u) return null;
+    u = u.toLowerCase().trim();
+    if (u.includes(".mp4") || u.includes(".m3u8") || u.includes(".webm") || u.includes(".mkv")) return "direct";
+    if (u.includes("snapchat.com")) return "snapchat";
+    if (u.includes("youtube.com") || u.includes("youtu.be")) return "youtube";
+    if (u.includes("instagram.com")) return "instagram";
+    if (u.includes("tiktok.com")) return "tiktok";
+    if (u.includes("facebook.com") || u.includes("fb.watch")) return "facebook";
+    if (u.includes("twitter.com") || u.includes("x.com")) return "x";
+    for (const k in P) {
+      if (P[k].slice(1).some(d => u.includes(d))) return k;
+    }
+    return "generic";
+  }
+
+  function onInput() {
+    const v = $("url").value.trim(), k = detect(v);
+    hint = ""; 
+    $("chip").hidden = false;
+    if (k === "direct") {
+      $("chip").textContent = "✓ Direct Video File Detected";
+    } else if (k === "generic") {
+      $("chip").textContent = "✓ Generic Link Detected";
+    } else if (k) {
+      $("chip").textContent = "✓ " + P[k][0] + " detected";
+    } else {
+      $("chip").hidden = true;
+    }
+    $("pick").hidden = true;
+    document.querySelectorAll("#sites button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
+    $("go").disabled = !v; 
+    $("err").hidden = true;
+  }
+
+  // BUILD PICKER
+  for (const k in P) { 
+    const b = document.createElement("button"); b.type = "button"; b.textContent = P[k][0]; b.dataset.k = k;
+    b.onclick = () => { 
+      if ($("url").value.trim()) { 
+        $("chip").textContent = "✓ " + P[k][0] + " selected manually";
+        $("chip").hidden = false;
+        $("go").disabled = false;
+      } 
+    };
+    $("sites").appendChild(b); 
+  }
+
+  // API CALL
+  async function go() {
+    busy = true; $("go").disabled = true; $("goLabel").textContent = "Working…"; $("load").hidden = false; $("res").hidden = true; $("err").hidden = true;
+    const currentUrl = $("url").value.trim();
+    
+    try {
+      const r = await fetch("/api/parse", {
+        method: "POST", 
+        headers: {"Content-Type": "application/json"}, 
+        body: JSON.stringify({url: currentUrl})
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Something went wrong.");
+      
+      // RENDER
+      $("ti").textContent = j.title;
+      const th = $("th"); if (j.thumb) { th.src = j.thumb; th.hidden = false; } else th.hidden = true;
+      const formatList = $("fm"); formatList.innerHTML = "";
+      
+      j.formats.forEach(f => {
+        const a = document.createElement("a"); 
+        a.href = f.url; a.target = "_blank"; a.rel = "noopener noreferrer nofollow";
+        a.textContent = f.label + " · " + f.ext.toUpperCase() + (f.size ? " · " + (f.size/1048576).toFixed(1) + " MB" : ""); 
+        a.style.display = "block"; a.style.marginBottom = "8px";
+        formatList.appendChild(a); 
+      });
+      
+      $("res").hidden = false; $("res").scrollIntoView({behavior:"smooth", block:"nearest"});
+    } catch (e) { 
+      $("err").textContent = e.message; $("err").hidden = false; 
+    }
+    
+    busy = false; $("goLabel").textContent = "Download"; $("load").hidden = true; onInput();
+  }
+
+  $("url").addEventListener("input", onInput);
+  $("go").addEventListener("click", go);
+  $("url").addEventListener("keydown", e => { if (e.key === "Enter" && !$("go").disabled) go(); });
+  
+  // Init
+  onInput();
+});
+</script>
 </body>
 </html>
