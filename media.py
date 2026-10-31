@@ -11,7 +11,7 @@ class Busy(Exception): pass
 class Fail(Exception):
     def __init__(self, msg): super().__init__(msg); self.msg = msg
 
-
+# অডিও এবং ভিডিও একসাথে একটি MP4 ফাইলে পাওয়ার সেটআপ
 OPTS = {
     "quiet": True, 
     "no_warnings": True, 
@@ -22,8 +22,7 @@ OPTS = {
     "extractor_retries": 1,
     "nocheckcertificate": True, 
     "ignoreerrors": True,
-    
-    "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" 
+    "format": "best[ext=mp4]/best" # এটি সাউন্ড সহ সেরা MP4 ভিডিও খুঁজবে
 }
 
 def _safe(u):
@@ -82,15 +81,12 @@ def _build(info):
         if f.get("protocol", "https") not in ("https", "http") or not _safe(f.get("url")): continue
         
         h = int(f.get("height") or 0); ext = str(f.get("ext") or "mp4")[:5]
-        
-        if ext not in ("mp4", "m4a", "webm"): continue
+        if ext not in ("mp4", "webm"): continue
         
         if (h, ext) in seen: continue
         seen.add((h, ext))
         
         label = f"{h}p" if h else "HD/Video"
-        if f.get("vcodec") == "none": label = "Audio"
-        
         out.append({"h": h, "label": label, "ext": ext,
                     "size": f.get("filesize") or f.get("filesize_approx"), "url": f["url"]})
                     
