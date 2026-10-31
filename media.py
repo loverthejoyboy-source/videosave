@@ -4,6 +4,13 @@ import yt_dlp
 import config as C
 from validator import check
 
+
+try:
+    from rahad_all_downloader import alldl
+    HAS_RAHAD = True
+except ImportError:
+    HAS_RAHAD = False
+
 _sem = threading.BoundedSemaphore(C.MAX_PARALLEL)
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
@@ -19,7 +26,8 @@ OPTS = {
     "playlist_items": "1", 
     "socket_timeout": 15, 
     "extractor_retries": 1,
-    "nocheckcertificate": True
+    "nocheckcertificate": True, 
+    "ignoreerrors": True
 }
 
 def _safe(u):
@@ -38,7 +46,6 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *a, **k): return None
 
 def resolve(url):
-    """Follow short links (fb.watch, redd.it) ourselves; every hop must stay on the allowlist."""
     if (urlsplit(url).hostname or "").lower() not in C.SHORT_HOSTS:
         return url
     op = urllib.request.build_opener(_NoRedirect)
@@ -48,8 +55,7 @@ def resolve(url):
         except urllib.error.HTTPError as e:
             loc = e.headers.get("Location") if e.code in (301, 302, 303, 307, 308) else None
             if not loc: return url
-            full = urljoin(url, loc)
-            nxt = check(full) or check(full.split("#")[0].split("?")[0])  # long tracking queries
+            nxt = check(urljoin(url, loc))
             if not nxt: raise Fail("This short link points to an unsupported site.")
             url = nxt[1]
         except Exception:
@@ -59,12 +65,12 @@ def resolve(url):
 def _why(e):
     m = str(e).lower()
     if any(x in m for x in ("sign in to confirm", "not a bot", "429", "too many requests")):
-        return "The platform is blocking our free server right now. Try again later or use another link."
-    if any(x in m for x in ("login", "log in", "cookies", "private", "members-only", "age-restricted", "confirm your age", "authenticat")):
-        return "This video needs a login, is private, or is age-restricted, so it can't be fetched."
+        return "YouTube is blocking our server (bot check). Trying alternative method..."
+    if any(x in m for x in ("login", "log in", "cookies", "private", "age-restricted", "authenticat")):
+        return "This video needs a login, is private, or is age-restricted."
     if "unsupported url" in m:
-        return "This type of link isn't supported. Paste the link of a single public video."
-    return "Couldn't read this link. The video may be unavailable or temporarily blocked."
+        return "This type of link isn't supported."
+    return "Couldn't read this link. Trying alternative..."
 
 def _build(info):
     if info and info.get("_type") == "playlist":
@@ -108,20 +114,45 @@ def _cobalt(url):
             return {"title": str(d.get("filename") or "Video")[:120], "thumb": None, "formats": items[:12]}
     return None
 
+def _rahad_fallback(url):
+    """তৃতীয় পক্ষের প্যাকেজ ব্যবহার করে চেষ্টা"""
+    if not HAS_RAHAD:
+        return None
+    try:
+        result = alldl(url)
+        if result and result.get("videoUrl"):
+            return {
+                "title": result.get("data", {}).get("title", "Video")[:120],
+                "thumb": None,
+                "formats": [{"label": "Best", "ext": "mp4", "size": None, "url": result["videoUrl"]}]
+            }
+    except Exception as e:
+        print("rahad fallback failed:", type(e).__name__, flush=True)
+    return None
+
 def extract(url):
     url = resolve(url)
     if not _sem.acquire(blocking=False):
         raise Busy()
     err = None
+    
+    # ধাপ ১: yt-dlp চেষ্টা
     try:
         with yt_dlp.YoutubeDL(OPTS) as y:
             res = _build(y.extract_info(url, download=False))
         if res: return res
     except Exception as e:
-        err = e; print("yt-dlp failed:", type(e).__name__, str(e)[:200], flush=True)
+        err = e
+        print("yt-dlp failed:", type(e).__name__, str(e)[:200], flush=True)
     finally:
         _sem.release()
-        
+    
+    
     res = _cobalt(url)
     if res: return res
+    
+   
+    res = _rahad_fallback(url)
+    if res: return res
+    
     raise Fail(_why(err) if err else "Couldn't find a downloadable video at this link.")
