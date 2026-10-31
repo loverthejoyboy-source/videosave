@@ -68,7 +68,8 @@
       <li>We comply with the DMCA and will remove features on a valid notice.</li>
       <li>Not affiliated with YouTube, TikTok, Meta, X or any other platform.</li>
     </ul>
-    <button id="agree" style="margin-top: 20px;">I agree</button>
+    <!-- Using a link to hide the modal via URL query parameter -->
+    <a id="agree" href="?tos=1" style="display:inline-block; margin-top: 20px; padding: 10px 20px; background: white; color: black; text-decoration: none; font-weight: bold; font-family: inherit; font-size: 1rem; border-radius: 5px;">I agree</a>
     <button id="close" class="ghost" style="display:none; margin-top: 20px;">Close</button>
   </div>
 </div>
@@ -81,25 +82,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
   let hint = "", busy = false;
 
-  // TOS HANDLING
-  const termsModal = $("terms");
-  const agreeBtn = $("agree");
-  
-  // By default, show the modal
-  termsModal.style.display = "flex"; 
-  
-  // Agree button logic
-  agreeBtn.onclick = function() {
-    termsModal.style.display = "none";
-    $("url").focus();
+  // Check if user clicked the agree link (which reloads the page with ?tos=1)
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('tos')) {
+    $("terms").style.display = "none";
     try { localStorage.setItem("tos", "agreed"); } catch(e){}
-  };
-
-  if (localStorage.getItem("tos") === "agreed") {
-    termsModal.style.display = "none";
+    // Clean the URL without reloading
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } else if (localStorage.getItem("tos") === "agreed") {
+    $("terms").style.display = "none";
   }
 
-  // DETECT
   function detect(u) {
     if (!u) return null;
     u = u.toLowerCase().trim();
@@ -135,7 +128,6 @@ document.addEventListener("DOMContentLoaded", () => {
     $("err").hidden = true;
   }
 
-  // BUILD PICKER
   for (const k in P) { 
     const b = document.createElement("button"); b.type = "button"; b.textContent = P[k][0]; b.dataset.k = k;
     b.onclick = () => { 
@@ -148,7 +140,6 @@ document.addEventListener("DOMContentLoaded", () => {
     $("sites").appendChild(b); 
   }
 
-  // API CALL
   async function go() {
     busy = true; $("go").disabled = true; $("goLabel").textContent = "Working…"; $("load").hidden = false; $("res").hidden = true; $("err").hidden = true;
     const currentUrl = $("url").value.trim();
@@ -162,7 +153,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Something went wrong.");
       
-      // RENDER
       $("ti").textContent = j.title;
       const th = $("th"); if (j.thumb) { th.src = j.thumb; th.hidden = false; } else th.hidden = true;
       const formatList = $("fm"); formatList.innerHTML = "";
@@ -187,7 +177,6 @@ document.addEventListener("DOMContentLoaded", () => {
   $("go").addEventListener("click", go);
   $("url").addEventListener("keydown", e => { if (e.key === "Enter" && !$("go").disabled) go(); });
   
-  // Init
   onInput();
 });
 </script>
