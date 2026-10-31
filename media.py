@@ -1,4 +1,4 @@
-import json, ipaddress, threading, urllib.request, urllib.error, re
+import json, ipaddress, threading, urllib.request, urllib.error, re, requests, os
 from urllib.parse import urlsplit, urljoin
 import yt_dlp
 from bs4 import BeautifulSoup
@@ -95,13 +95,74 @@ def _build(info):
     th = info.get("thumbnail")
     return {"title": str(info.get("title") or "Video")[:120], "thumb": th if _safe(th) else None, "formats": out[:6]}
 
+def _snapchat_extract(url):
+    match = re.search(r'snapchat\.com/(?:add/|@)([a-zA-Z0-9._-]+)', url)
+    if not match:
+        return None
+    
+    username = match.group(1)
+    
+    # Environment variable theke token read kora hoche
+    APIFY_TOKEN = os.environ.get("APIFY_TOKEN", "")
+    
+    if not APIFY_TOKEN:
+        print("Apify token not configured in Environment Variables, skipping Snapchat", flush=True)
+        return None
+    
+    try:
+        actor_id = "maximedupre~snapchat-story-viewer"
+        run_url = f"https://api.apify.com/v2/acts/{actor_id}/run-sync-get-dataset-items?token={APIFY_TOKEN}"
+        
+        payload = {
+            "profiles": [f"@{username}"],
+            "maxItems": 20
+        }
+        
+        resp = requests.post(run_url, json=payload, timeout=60)
+        if resp.status_code != 200:
+            print(f"Apify error: {resp.status_code} - {resp.text[:200]}", flush=True)
+            return None
+        
+        data = resp.json()
+        if not data:
+            return None
+        
+        formats = []
+        title = username
+        thumb = None
+        
+        for item in data:
+            if item.get("profile", {}).get("displayName"):
+                title = item["profile"]["displayName"]
+            if item.get("profile", {}).get("avatarUrl"):
+                thumb = item["profile"]["avatarUrl"]
+            
+            for snap in item.get("snaps", []):
+                media_url = snap.get("mediaUrl")
+                if media_url and _safe(media_url):
+                    media_type = snap.get("mediaType", "video")
+                    ext = "mp4" if media_type == "video" else "jpg"
+                    formats.append({
+                        "label": f"{media_type.title()} {len(formats)+1}",
+                        "ext": ext,
+                        "size": None,
+                        "url": media_url
+                    })
+        
+        if formats:
+            return {"title": title, "thumb": thumb, "formats": formats[:12]}
+            
+    except Exception as e:
+        print(f"Snapchat Apify failed: {type(e).__name__}", flush=True)
+    
+    return None
+
 def _scrape_html(url):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             html = r.read(2000000).decode('utf-8', errors='ignore')
             
-            # 1. Regex search for direct video links in scripts
             matches = re.findall(r'https?://[^\s"\'<>]+\.(?:mp4|m3u8|webm)[^\s"\'<>]*', html)
             if matches:
                 video_url = matches[0].replace('\\/', '/')
@@ -117,7 +178,6 @@ def _scrape_html(url):
                     "formats": [{"label": "Best Available", "ext": ext, "size": None, "url": video_url}]
                 }
             
-            # 2. BeautifulSoup search for <video> or <source> tags
             soup = BeautifulSoup(html, 'html.parser')
             for tag in soup.find_all(['video', 'source']):
                 src = tag.get('src')
@@ -136,7 +196,10 @@ def _scrape_html(url):
 def extract(url):
     url = resolve(url)
     
-    # Direct file link
+    if "snapchat.com" in url and ("/add/" in url or "/@" in url):
+        res = _snapchat_extract(url)
+        if res: return res
+    
     if url.lower().split('?')[0].endswith(('.mp4', '.webm', '.m3u8', '.mkv')):
         ext = url.split('?')[0].rsplit('.', 1)[-1]
         return {"title": "Direct Video", "thumb": None, "formats": [{"label": "Direct", "ext": ext, "size": None, "url": url}]}
