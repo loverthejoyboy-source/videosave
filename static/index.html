@@ -1,24 +1,32 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Clipkeep – Keep your videos close</title>
-<meta name="description" content="Paste a link, get a direct download. Nothing is stored on our servers.">
-<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="/static/favicon-32.png" type="image/png" sizes="32x32">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-<meta name="theme-color" content="#4a33ff">
-<link rel="stylesheet" href="/static/style.css"></head>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  /* Local Storage History Chips CSS */
+  .history-wrap { margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .history-chip { background: #f0f0f5; border: 1px solid #ddd; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #333; transition: 0.2s; }
+  .history-chip:hover { background: #e0e0e5; }
+  .history-chip span { color: #888; margin-left: 5px; font-weight: bold; }
+</style>
+</head>
 <body>
 <div class="top">Download only content you own or have permission to save. <a href="#" id="tosLink2">Read the terms</a></div>
 <header>
-  <a class="brand" href="/"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Clip<b>keep</b></a>
+  <a class="brand" href="/">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Clip<b>keep</b>
+  </a>
   <a class="navbtn" href="#" id="tosLink">Terms &amp; DMCA</a>
 </header>
 <main>
   <section class="hero">
-    <p class="badge"><i></i>8 supported platforms</p>
+    <p class="badge"><i></i>Universal Video Downloader</p>
     <h1><span>Keep your</span><span>videos</span><span class="acc">close.</span></h1>
-    <p class="sub">Paste a link from <b>YouTube</b>, <b>TikTok</b>, <b>Instagram</b> and more. We detect the site and give you a direct download in seconds.</p>
+    <p class="sub">Paste a video link from any supported site. We detect it and give you a direct download in seconds.</p>
     <p class="fine">No sign-up · No extensions · Nothing stored on our servers</p>
     <div class="bar">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></g></svg>
@@ -26,6 +34,10 @@
       <button id="go" disabled><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="goLabel">Download</span></button>
     </div>
     <input id="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+    
+    <!-- Local Storage History Section -->
+    <div id="historyContainer" class="history-wrap" style="display: none;"></div>
+
     <p id="chip" class="status" hidden></p>
     <p id="pick" class="status" hidden>We couldn’t recognise this site. Tap the site your link is from:</p>
     <div id="sites" class="sites" role="group" aria-label="Supported platforms"></div>
@@ -43,33 +55,171 @@
       <p class="hint">The video opens in a new tab. Tap ⋮ → Download, or right-click → Save video as.</p>
     </div>
   </section>
-
-  <section class="why">
-    <h2>Light, private, and fast.</h2>
-    <div class="grid">
-      <div><h3>Zero storage</h3><p>Files never touch our servers. You download straight from the source to your own device.</p></div>
-      <div><h3>Original quality</h3><p>We return the best direct formats a platform offers, with no re-encoding or watermarks added.</p></div>
-      <div><h3>Protected service</h3><p>Rate limits and bot checks keep the service quick and available for everyone.</p></div>
-    </div>
-  </section>
 </main>
 <footer>© Clipkeep. Not affiliated with any video platform. <a href="#" id="tosLink3">Terms &amp; DMCA</a></footer>
 
 <div id="terms" class="modal" role="dialog" aria-modal="true" aria-labelledby="tt">
   <div class="card">
-    <h2 id="tt">Terms &amp; Conditions (v1.0)</h2>
+    <h2 id="tt">Terms &amp; Conditions (v1.1)</h2>
     <ul>
+      <li>You are at least 21 years old (or the age of majority where you live) and accept full responsibility for your use.</li>
       <li>You are solely responsible for anything you download and how you use it.</li>
-      <li>You confirm you own the content or have the legal right or explicit permission to download it.</li>
-      <li>This site does not host, store or distribute any video files. Downloads happen only on your own device, from your own browser.</li>
-      <li>The site owner and host accept no liability for your use of this service. You use it at your own risk.</li>
-      <li>We comply with the DMCA and will remove affected features on a valid notice. Send notices to contact@example.com.</li>
-      <li>This site is not affiliated with YouTube, TikTok, Meta (Facebook/Instagram), X or any other platform.</li>
-      <li>We do not bypass DRM or paid-content protection. Abuse may result in blocked access.</li>
+      <li>You confirm you own the content or have the legal right to download it.</li>
+      <li>This site does not host, store or distribute any video files. Downloads happen only on your device.</li>
+      <li>The site owner and host accept no liability for your use of this service.</li>
+      <li>We comply with the DMCA and will remove features on a valid notice.</li>
+      <li>Not affiliated with YouTube, TikTok, Meta, X or any other platform.</li>
     </ul>
     <button id="agree">I agree</button>
     <button id="close" class="ghost" hidden>Close</button>
   </div>
 </div>
-<script src="/static/app.js"></script>
-</body></html>
+
+<script>
+(() => {
+"use strict";
+const V = "1.1";
+const P = {youtube:["YouTube","youtube.com","youtu.be"],tiktok:["TikTok","tiktok.com"],instagram:["Instagram","instagram.com"],
+  facebook:["Facebook","facebook.com","fb.watch"],x:["X (Twitter)","x.com","twitter.com"],snapchat:["Snapchat","snapchat.com"],
+  vimeo:["Vimeo","vimeo.com"],dailymotion:["Dailymotion","dailymotion.com"],reddit:["Reddit","reddit.com"]};
+const $ = id => document.getElementById(id);
+let token = "", hint = "", busy = false;
+
+function detect(u) {
+  try { const h = new URL(u).hostname.toLowerCase();
+    for (const k in P) if (P[k].slice(1).some(d => h === d || h.endsWith("." + d))) return k;
+  } catch (e) {}
+  return null;
+}
+
+async function api(path, body, tok) {
+  const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json","X-Token":tok||""}, body:JSON.stringify(body)});
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) { const e = new Error(j.error || "Something went wrong."); e.kind = j.kind; throw e; }
+  return j;
+}
+
+async function getToken() { token = (await api("/api/token", {agree:true, v:V})).token; }
+function showErr(m) { $("err").textContent = m; $("err").hidden = !m; }
+
+// --- LOCAL STORAGE HISTORY LOGIC ---
+function loadHistory() {
+  try {
+    const hist = JSON.parse(localStorage.getItem("clipkeep_history") || "[]");
+    const container = $("historyContainer");
+    if (hist.length === 0) { container.style.display = "none"; return; }
+    
+    container.innerHTML = "";
+    hist.forEach(url => {
+      const chip = document.createElement("div");
+      chip.className = "history-chip";
+      // Shorten URL for display
+      const shortUrl = url.length > 30 ? url.substring(0, 27) + "..." : url;
+      chip.innerHTML = `🔗 ${shortUrl} <span>×</span>`;
+      
+      // Load link on click
+      chip.onclick = (e) => {
+        if(e.target.tagName === 'SPAN') return; // Ignore if clicked on 'x'
+        $("url").value = url;
+        onInput();
+        go();
+      };
+      
+      // Remove from history on 'x' click
+      chip.querySelector("span").onclick = (e) => {
+        e.stopPropagation();
+        const newHist = hist.filter(h => h !== url);
+        localStorage.setItem("clipkeep_history", JSON.stringify(newHist));
+        loadHistory();
+      };
+      
+      container.appendChild(chip);
+    });
+    container.style.display = "flex";
+  } catch (e) { console.error("History load failed", e); }
+}
+
+function saveHistory(url) {
+  if (!url) return;
+  try {
+    let hist = JSON.parse(localStorage.getItem("clipkeep_history") || "[]");
+    hist = hist.filter(h => h !== url); // Remove if exists
+    hist.unshift(url); // Add to top
+    hist = hist.slice(0, 5); // Keep only last 5
+    localStorage.setItem("clipkeep_history", JSON.stringify(hist));
+    loadHistory();
+  } catch (e) {}
+}
+// ------------------------------------
+
+function onInput() {
+  const v = $("url").value.trim(), k = detect(v), ask = !!v && !k;
+  if (!ask) hint = "";
+  $("chip").hidden = !k; if (k) $("chip").textContent = "✓ " + P[k][0] + " detected";
+  $("pick").hidden = !ask;
+  document.querySelectorAll("#sites button").forEach(b => b.classList.toggle("on", b.dataset.k === (k || hint)));
+  $("go").disabled = busy || !v || (ask && !hint); showErr("");
+}
+
+function buildPicker() {
+  for (const k in P) { 
+    const b = document.createElement("button"); b.type = "button"; b.textContent = P[k][0]; b.dataset.k = k;
+    b.onclick = () => { const v = $("url").value.trim(); if (v && !detect(v)) { hint = k; onInput(); } };
+    $("sites").appendChild(b); 
+  }
+}
+
+function render(d) {
+  $("ti").textContent = d.title;
+  const th = $("th"); if (d.thumb) { th.src = d.thumb; th.hidden = false; } else th.hidden = true;
+  $("fm").replaceChildren(...d.formats.map(f => {
+    const a = document.createElement("a"); a.href = f.url; a.target = "_blank"; a.rel = "noopener noreferrer nofollow";
+    a.textContent = f.label + " · " + f.ext.toUpperCase() + (f.size ? " · " + (f.size/1048576).toFixed(1) + " MB" : ""); 
+    return a; 
+  }));
+  $("res").hidden = false; $("res").scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+async function go() {
+  busy = true; $("go").disabled = true; $("goLabel").textContent = "Working…"; $("load").hidden = false; $("res").hidden = true; showErr("");
+  const currentUrl = $("url").value.trim();
+  const body = {url: currentUrl, platform: hint, website: $("website").value};
+  
+  try {
+    let d;
+    try { d = await api("/api/parse", body, token); }
+    catch (e) { 
+      if (e.kind !== "token") throw e; 
+      await getToken(); 
+      d = await api("/api/parse", body, token); 
+    }
+    render(d);
+    saveHistory(currentUrl); // Save to Local Storage on success
+  } catch (e) { 
+    showErr(e.message); 
+  }
+  
+  busy = false; $("goLabel").textContent = "Download"; $("load").hidden = true; onInput();
+}
+
+function modal(readonly) { $("terms").hidden = false; $("agree").hidden = readonly; $("close").hidden = !readonly; }
+
+buildPicker();
+loadHistory(); // Load history on page start
+
+$("url").addEventListener("input", onInput);
+$("go").addEventListener("click", go);
+$("url").addEventListener("keydown", e => { if (e.key === "Enter" && !$("go").disabled) go(); });
+["tosLink","tosLink2","tosLink3"].forEach(id => $(id).addEventListener("click", e => { e.preventDefault(); modal(true); }));
+$("close").addEventListener("click", () => { $("terms").hidden = true; });
+$("agree").addEventListener("click", async () => {
+  $("agree").disabled = true;
+  try { await getToken(); } catch (e) { $("agree").disabled = false; alert(e.message); return; }
+  try { localStorage.setItem("tos", JSON.stringify({v:V, t:Date.now()})); } catch (e) {}
+  $("terms").hidden = true; $("url").disabled = false; $("url").focus(); $("agree").disabled = false;
+});
+modal(false);
+})();
+</script>
+</body>
+</html>

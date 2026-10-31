@@ -1,8 +1,8 @@
 (() => {
 "use strict";
-const V = "1.0";
+const V = "1.1";
 const P = {youtube:["YouTube","youtube.com","youtu.be"],tiktok:["TikTok","tiktok.com"],instagram:["Instagram","instagram.com"],
-  facebook:["Facebook","facebook.com","fb.watch"],x:["X (Twitter)","x.com","twitter.com"],vimeo:["Vimeo","vimeo.com"],
+  facebook:["Facebook","facebook.com","fb.watch"],x:["X (Twitter)","x.com","twitter.com"],snapchat:["Snapchat","snapchat.com"],vimeo:["Vimeo","vimeo.com"],
   dailymotion:["Dailymotion","dailymotion.com","dai.ly"],reddit:["Reddit","reddit.com","redd.it"]};
 const $ = id => document.getElementById(id);
 let token = "", hint = "", busy = false;
@@ -57,6 +57,7 @@ async function go() {
 function modal(readonly) { $("terms").hidden = false; $("agree").hidden = readonly; $("close").hidden = !readonly; (readonly ? $("close") : $("agree")).focus(); }
 
 buildPicker();
+fetch("/api/contact").then(r => r.json()).then(d => { if (d && /^[^\s@<>]+@[^\s@<>]+$/.test(d.email || "")) document.querySelectorAll(".cmail").forEach(e => { e.textContent = d.email; }); }).catch(() => {});
 $("url").addEventListener("input", onInput);
 $("go").addEventListener("click", go);
 $("url").addEventListener("keydown", e => { if (e.key === "Enter" && !$("go").disabled) go(); });

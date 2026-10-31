@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 import config as C
 from security import guard, hit, client_ip, make_token, valid_token, err
 from validator import check
-from extractor import extract, Busy, Fail
+from media import extract, Busy, Fail
 
 bp = Blueprint("api", __name__)
 
@@ -32,8 +32,8 @@ def parse():
         return jsonify(extract(res[1]))
     except Busy:
         return err(503, "The server is busy. Please try again shortly.")
-    except Fail:
-        return err(422, "Couldn't read this link. The video may be private, unsupported, or temporarily blocked.")
+    except Fail as e:
+        return err(422, e.msg)
 
 @bp.get("/api/keepalive")
 def keepalive():
@@ -42,3 +42,9 @@ def keepalive():
        not hmac.compare_digest(C.KEEPALIVE_TOKEN.encode(), given.encode()):
         return "", 404
     return jsonify(ok=True)
+
+@bp.get("/api/contact")
+def contact():
+    if not hit("c:" + client_ip(), 60, 60):
+        return "", 429
+    return jsonify(email=C.CONTACT_EMAIL)
