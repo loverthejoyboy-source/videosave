@@ -21,8 +21,11 @@ def parse():
     d = request.get_json(silent=True)
     if not isinstance(d, dict) or d.get("website"):
         return err(400, "Request not accepted.")
-    if not valid_token(request.headers.get("X-Token", "")):
-        return err(403, "Session expired. Please try again.", "token")
+    
+    # --- টোকেন চেক এখান থেকে বাদ দেওয়া হয়েছে ---
+    # if not valid_token(request.headers.get("X-Token", "")):
+    #     return err(403, "Session expired. Please try again.", "token")
+
     res = check(d.get("url"))
     if not res:
         return err(400, "This link isn't supported. Paste the full https link from a supported site.")
