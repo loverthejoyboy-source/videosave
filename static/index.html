@@ -77,7 +77,7 @@
 
 
 
-  <script>
+<script>
 (() => {
 "use strict";
 const V = "1.1";
@@ -89,27 +89,23 @@ let hint = "", busy = false;
 
 function detect(u) {
   if (!u) return null;
-  try { 
-    const urlObj = new URL(u);
-    const h = urlObj.hostname.toLowerCase();
-    const path = urlObj.pathname.toLowerCase();
-
-    // ডাইরেক্ট ভিডিও ফাইল চেক
-    if (path.endsWith(".mp4") || path.endsWith(".webm") || path.endsWith(".m3u8") || path.endsWith(".mkv")) {
-      return "direct";
-    }
-    
-    // প্লাটফর্ম চেক
-    if (h.includes("snapchat.com")) return "snapchat";
-    if (h.includes("youtube.com") || h.includes("youtu.be")) return "youtube";
-    if (h.includes("instagram.com")) return "instagram";
-    if (h.includes("tiktok.com")) return "tiktok";
-    if (h.includes("facebook.com") || h.includes("fb.watch")) return "facebook";
-    if (h.includes("twitter.com") || h.includes("x.com")) return "x";
-    
-    for (const k in P) if (P[k].slice(1).some(d => h === d || h.endsWith("." + d))) return k;
-  } catch (e) {}
-  return "generic"; // অজানা সাইট হলেও লিংক নেবে
+  u = u.toLowerCase();
+  
+  if (u.includes(".mp4") || u.includes(".m3u8") || u.includes(".webm") || u.includes(".mkv")) {
+    return "direct";
+  }
+  
+  if (u.includes("snapchat.com")) return "snapchat";
+  if (u.includes("youtube.com") || u.includes("youtu.be")) return "youtube";
+  if (u.includes("instagram.com")) return "instagram";
+  if (u.includes("tiktok.com")) return "tiktok";
+  if (u.includes("facebook.com") || u.includes("fb.watch")) return "facebook";
+  if (u.includes("twitter.com") || u.includes("x.com")) return "x";
+  
+  for (const k in P) {
+    if (P[k].slice(1).some(d => u.includes(d))) return k;
+  }
+  return "generic";
 }
 
 async function api(path, body) {
@@ -168,28 +164,35 @@ function saveHistory(url) {
 }
 
 function onInput() {
-  const v = $("url").value.trim(), k = detect(v), ask = !!v && !k;
-  if (!ask) hint = "";
+  const v = $("url").value.trim(), k = detect(v);
+  hint = ""; 
   
-  // অজানা সাইট হলেও ডাউনলোড বাটন এনাবল থাকবে
-  $("chip").hidden = !k || k === "generic" || k === "direct"; 
-  if (k && k !== "generic" && k !== "direct") {
+  $("chip").hidden = true;
+  if (k === "direct") {
+    $("chip").textContent = "✓ Direct Video File Detected";
+    $("chip").hidden = false;
+  } else if (k && k !== "generic") {
     $("chip").textContent = "✓ " + P[k][0] + " detected";
-  } else if (k === "direct") {
-    $("chip").textContent = "✓ Direct Video Detected";
     $("chip").hidden = false;
   }
   
-  $("pick").hidden = !ask;
-  document.querySelectorAll("#sites button").forEach(b => b.classList.toggle("on", b.dataset.k === (k || hint)));
-  $("go").disabled = busy || !v; // শুধু খালি থাকলে ডিজেবল হবে
+  $("pick").hidden = true; 
+  document.querySelectorAll("#sites button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
+  $("go").disabled = busy || !v; 
   showErr("");
 }
 
 function buildPicker() {
   for (const k in P) { 
     const b = document.createElement("button"); b.type = "button"; b.textContent = P[k][0]; b.dataset.k = k;
-    b.onclick = () => { const v = $("url").value.trim(); if (v && !detect(v)) { hint = k; onInput(); } };
+    b.onclick = () => { 
+      const v = $("url").value.trim(); 
+      if (v) { 
+        $("chip").textContent = "✓ " + P[k][0] + " selected manually";
+        $("chip").hidden = false;
+        $("go").disabled = false;
+      } 
+    };
     $("sites").appendChild(b); 
   }
 }
@@ -261,6 +264,8 @@ $("agree").addEventListener("click", () => {
 modal(false);
 })();
 </script>
+
+  
 
   
 </body>
