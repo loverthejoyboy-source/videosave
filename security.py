@@ -10,7 +10,7 @@ BOT = re.compile(r"curl|wget|python|requests|httpx|aiohttp|scrapy|bot|spider|cra
 _lock, _hits = threading.Lock(), defaultdict(deque)
 
 def client_ip():
-    cf = request.headers.get("CF-Connecting-IP", "").strip()  # Render-এর Cloudflare এটা সেট করে
+    cf = request.headers.get("CF-Connecting-IP", "").strip()  # set by the Cloudflare layer in front of Render
     if cf: return cf
     xs = [x.strip() for x in request.headers.get("X-Forwarded-For", "").split(",") if x.strip()]
     return xs[-C.TRUSTED_HOPS] if len(xs) >= C.TRUSTED_HOPS else (request.remote_addr or "?")
@@ -43,12 +43,12 @@ def guard(f):
     def w(*a, **k):
         ua = request.headers.get("User-Agent", "")
         if len(ua) < 20 or BOT.search(ua) or request.headers.get("Sec-Fetch-Site") != "same-origin":
-            return err(403, "অনুরোধ গ্রহণযোগ্য নয়।")
+            return err(403, "Request not accepted.")
         if request.mimetype != "application/json":
-            return err(415, "অনুরোধ গ্রহণযোগ্য নয়।")
+            return err(415, "Request not accepted.")
         ip = client_ip()
         if not (hit("g", C.GLOBAL_PER_MIN, 60) and hit(ip, C.RATE_PER_MIN, 60) and hit("d:" + ip, C.RATE_PER_DAY, 86400)):
-            return err(429, "অনেক বেশি অনুরোধ। এক মিনিট পরে চেষ্টা করুন।")
+            return err(429, "Too many requests. Please try again in a minute.")
         return f(*a, **k)
     return w
 
@@ -56,7 +56,7 @@ def init_security(app):
     @app.after_request
     def h(r):
         r.headers["Content-Security-Policy"] = (
-            "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; "
+            "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; font-src 'self'; "
             "connect-src 'self'; base-uri 'none'; form-action 'none'; "
             "frame-ancestors 'self' https://huggingface.co https://*.huggingface.co")
         r.headers["X-Content-Type-Options"] = "nosniff"

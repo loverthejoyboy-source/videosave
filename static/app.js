@@ -5,7 +5,7 @@ const P = {youtube:["YouTube","youtube.com","youtu.be"],tiktok:["TikTok","tiktok
   facebook:["Facebook","facebook.com","fb.watch"],x:["X (Twitter)","x.com","twitter.com"],vimeo:["Vimeo","vimeo.com"],
   dailymotion:["Dailymotion","dailymotion.com","dai.ly"],reddit:["Reddit","reddit.com","redd.it"]};
 const $ = id => document.getElementById(id);
-let token = "", hint = "";
+let token = "", hint = "", busy = false;
 
 function detect(u) {
   try { const h = new URL(u).hostname.toLowerCase();
@@ -16,22 +16,24 @@ function detect(u) {
 async function api(path, body, tok) {
   const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json","X-Token":tok||""}, body:JSON.stringify(body)});
   let j = {}; try { j = await r.json(); } catch (e) {}
-  if (!r.ok) { const e = new Error(j.error || "কিছু ভুল হয়েছে।"); e.kind = j.kind; throw e; }
+  if (!r.ok) { const e = new Error(j.error || "Something went wrong. Please try again."); e.kind = j.kind; throw e; }
   return j;
 }
 async function getToken() { token = (await api("/api/token", {agree:true, v:V})).token; }
 function showErr(m) { $("err").textContent = m; $("err").hidden = !m; }
 
 function onInput() {
-  const v = $("url").value.trim(), k = detect(v);
-  $("chip").hidden = !k; if (k) $("chip").textContent = P[k][0] + " চিহ্নিত হয়েছে";
-  const ask = !!v && !k; $("pick").hidden = !ask; if (!ask) hint = "";
-  $("go").disabled = !v || (ask && !hint); showErr("");
+  const v = $("url").value.trim(), k = detect(v), ask = !!v && !k;
+  if (!ask) hint = "";
+  $("chip").hidden = !k; if (k) $("chip").textContent = "✓ " + P[k][0] + " detected";
+  $("pick").hidden = !ask;
+  document.querySelectorAll("#sites button").forEach(b => b.classList.toggle("on", b.dataset.k === (k || hint)));
+  $("go").disabled = busy || !v || (ask && !hint); showErr("");
 }
 function buildPicker() {
-  for (const k in P) { const b = document.createElement("button"); b.type = "button"; b.textContent = P[k][0]; b.setAttribute("aria-pressed","false");
-    b.onclick = () => { hint = k; document.querySelectorAll("#pickList button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); onInput(); };
-    $("pickList").appendChild(b); }
+  for (const k in P) { const b = document.createElement("button"); b.type = "button"; b.textContent = P[k][0]; b.dataset.k = k;
+    b.onclick = () => { const v = $("url").value.trim(); if (v && !detect(v)) { hint = k; onInput(); } };
+    $("sites").appendChild(b); }
 }
 function render(d) {
   $("ti").textContent = d.title;
@@ -39,10 +41,10 @@ function render(d) {
   $("fm").replaceChildren(...d.formats.map(f => {
     const a = document.createElement("a"); a.href = f.url; a.target = "_blank"; a.rel = "noopener noreferrer nofollow";
     a.textContent = f.label + " · " + f.ext.toUpperCase() + (f.size ? " · " + (f.size/1048576).toFixed(1) + " MB" : ""); return a; }));
-  $("res").hidden = false;
+  $("res").hidden = false; $("res").scrollIntoView({behavior:"smooth", block:"nearest"});
 }
 async function go() {
-  $("go").disabled = true; $("go").textContent = "খোঁজা হচ্ছে…"; $("res").hidden = true; showErr("");
+  busy = true; $("go").disabled = true; $("goLabel").textContent = "Working…"; $("load").hidden = false; $("res").hidden = true; showErr("");
   const body = {url:$("url").value.trim(), platform:hint, website:$("website").value};
   try {
     let d;
@@ -50,7 +52,7 @@ async function go() {
     catch (e) { if (e.kind !== "token") throw e; await getToken(); d = await api("/api/parse", body, token); }
     render(d);
   } catch (e) { showErr(e.message); }
-  $("go").textContent = "ভিডিও খুঁজুন"; onInput();
+  busy = false; $("goLabel").textContent = "Download"; $("load").hidden = true; onInput();
 }
 function modal(readonly) { $("terms").hidden = false; $("agree").hidden = readonly; $("close").hidden = !readonly; (readonly ? $("close") : $("agree")).focus(); }
 
@@ -58,7 +60,7 @@ buildPicker();
 $("url").addEventListener("input", onInput);
 $("go").addEventListener("click", go);
 $("url").addEventListener("keydown", e => { if (e.key === "Enter" && !$("go").disabled) go(); });
-$("tosLink").addEventListener("click", e => { e.preventDefault(); modal(true); });
+["tosLink","tosLink2","tosLink3"].forEach(id => $(id).addEventListener("click", e => { e.preventDefault(); modal(true); }));
 $("close").addEventListener("click", () => { $("terms").hidden = true; });
 $("agree").addEventListener("click", async () => {
   $("agree").disabled = true;
@@ -66,5 +68,5 @@ $("agree").addEventListener("click", async () => {
   try { localStorage.setItem("tos", JSON.stringify({v:V, t:Date.now()})); } catch (e) {}
   $("terms").hidden = true; $("url").disabled = false; $("url").focus(); $("agree").disabled = false;
 });
-modal(false); // প্রতিবার পেজ লোডে বাধ্যতামূলক
+modal(false); // shown on every page load
 })();

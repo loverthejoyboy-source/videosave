@@ -1,42 +1,74 @@
 <!doctype html>
-<html lang="bn"><head><meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ভিডিও ব্যাকআপ টুল</title>
+<title>Clipkeep – Keep your videos close</title>
+<meta name="description" content="Paste a link, get a direct download. Nothing is stored on our servers.">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="theme-color" content="#4a33ff">
 <link rel="stylesheet" href="/static/style.css"></head>
 <body>
+<div class="top">Download only content you own or have permission to save. <a href="#" id="tosLink2">Read the terms</a></div>
+<header>
+  <a class="brand" href="/"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Clip<b>keep</b></a>
+  <a class="navbtn" href="#" id="tosLink">Terms &amp; DMCA</a>
+</header>
 <main>
-  <h1>নিজের ভিডিও সেভ করুন</h1>
-  <p class="sub">লিংক পেস্ট করুন। সাইট নিজেই চিনে নেবে।</p>
-  <div class="box">
-    <input id="url" type="url" inputmode="url" autocomplete="off" maxlength="400" placeholder="https://..." aria-label="ভিডিও লিংক" disabled>
+  <section class="hero">
+    <p class="badge"><i></i>8 supported platforms</p>
+    <h1><span>Keep your</span><span>videos</span><span class="acc">close.</span></h1>
+    <p class="sub">Paste a link from <b>YouTube</b>, <b>TikTok</b>, <b>Instagram</b> and more. We detect the site and give you a direct download in seconds.</p>
+    <p class="fine">No sign-up · No extensions · Nothing stored on our servers</p>
+    <div class="bar">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></g></svg>
+      <input id="url" type="url" inputmode="url" autocomplete="off" maxlength="400" placeholder="Paste a video URL..." aria-label="Video link" disabled>
+      <button id="go" disabled><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="goLabel">Download</span></button>
+    </div>
     <input id="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-    <div id="chip" class="chip" hidden></div>
-    <div id="pick" hidden><p>সাইট চিনতে পারিনি। কোন সাইটের লিংক?</p><div id="pickList" class="list"></div></div>
-    <button id="go" disabled>ভিডিও খুঁজুন</button>
-  </div>
-  <p id="err" class="err" role="alert" hidden></p>
-  <section id="res" hidden>
-    <img id="th" alt="" referrerpolicy="no-referrer"><h2 id="ti"></h2>
-    <div id="fm" class="list"></div>
-    <p class="hint">ভিডিও নতুন ট্যাবে খুলবে। সেখানে ⋮ মেনু → Download চাপুন।</p>
+    <p id="chip" class="status" hidden></p>
+    <p id="pick" class="status" hidden>We couldn’t recognise this site. Tap the site your link is from:</p>
+    <div id="sites" class="sites" role="group" aria-label="Supported platforms"></div>
+    <div id="load" class="load" hidden><span></span><p>Fetching video details…</p></div>
+    <p id="err" class="err" role="alert" hidden></p>
+    <div class="ghostword" aria-hidden="true">KEEPING</div>
+  </section>
+
+  <section id="res" class="result" hidden>
+    <img id="th" alt="" referrerpolicy="no-referrer">
+    <div class="info">
+      <h2 id="ti"></h2>
+      <p class="ready">Your file is ready. Choose a quality:</p>
+      <div id="fm" class="list"></div>
+      <p class="hint">The video opens in a new tab. Tap ⋮ → Download, or right-click → Save video as.</p>
+    </div>
+  </section>
+
+  <section class="why">
+    <h2>Light, private, and fast.</h2>
+    <div class="grid">
+      <div><h3>Zero storage</h3><p>Files never touch our servers. You download straight from the source to your own device.</p></div>
+      <div><h3>Original quality</h3><p>We return the best direct formats a platform offers, with no re-encoding or watermarks added.</p></div>
+      <div><h3>Protected service</h3><p>Rate limits and bot checks keep the service quick and available for everyone.</p></div>
+    </div>
   </section>
 </main>
-<footer>শুধু নিজের বা অনুমতিপ্রাপ্ত কনটেন্ট। কোনো প্ল্যাটফর্মের সাথে সম্পর্ক নেই। <a href="#" id="tosLink">শর্তাবলী</a></footer>
+<footer>© Clipkeep. Not affiliated with any video platform. <a href="#" id="tosLink3">Terms &amp; DMCA</a></footer>
 
 <div id="terms" class="modal" role="dialog" aria-modal="true" aria-labelledby="tt">
   <div class="card">
-    <h2 id="tt">শর্তাবলী (সংস্করণ 1.0)</h2>
+    <h2 id="tt">Terms &amp; Conditions (v1.0)</h2>
     <ul>
-      <li>ডাউনলোড করা কনটেন্টের সম্পূর্ণ দায় শুধু ব্যবহারকারীর।</li>
-      <li>আপনি নিশ্চিত করছেন যে কনটেন্টটি আপনার নিজের, অথবা ডাউনলোডের আইনি অধিকার/স্পষ্ট অনুমতি আপনার আছে।</li>
-      <li>এই সাইট কোনো ভিডিও হোস্ট, সংরক্ষণ বা বিতরণ করে না। ডাউনলোড শুধু আপনার ডিভাইসে, আপনার ব্রাউজার থেকে হয়।</li>
-      <li>সাইটের মালিক ও হোস্টের কোনো আইনি দায় নেই; ব্যবহার সম্পূর্ণ আপনার ঝুঁকিতে।</li>
-      <li>আমরা DMCA মেনে চলি। বৈধ নোটিশ পেলে সংশ্লিষ্ট ফিচার সরিয়ে দেব। নোটিশ: contact@example.com</li>
-      <li>এই সাইট YouTube, TikTok, Meta (Facebook/Instagram), X বা অন্য কোনো প্ল্যাটফর্মের সাথে যুক্ত নয়।</li>
-      <li>DRM বা পেইড কনটেন্টের সুরক্ষা ভাঙার কোনো চেষ্টা নেই। অপব্যবহার করলে প্রবেশ বন্ধ হতে পারে।</li>
+      <li>You are solely responsible for anything you download and how you use it.</li>
+      <li>You confirm you own the content or have the legal right or explicit permission to download it.</li>
+      <li>This site does not host, store or distribute any video files. Downloads happen only on your own device, from your own browser.</li>
+      <li>The site owner and host accept no liability for your use of this service. You use it at your own risk.</li>
+      <li>We comply with the DMCA and will remove affected features on a valid notice. Send notices to contact@example.com.</li>
+      <li>This site is not affiliated with YouTube, TikTok, Meta (Facebook/Instagram), X or any other platform.</li>
+      <li>We do not bypass DRM or paid-content protection. Abuse may result in blocked access.</li>
     </ul>
-    <button id="agree">আমি সম্মত</button>
-    <button id="close" class="ghost" hidden>বন্ধ করুন</button>
+    <button id="agree">I agree</button>
+    <button id="close" class="ghost" hidden>Close</button>
   </div>
 </div>
 <script src="/static/app.js"></script>

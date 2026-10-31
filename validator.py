@@ -4,7 +4,7 @@ from config import PLATFORMS
 _BAD = re.compile(r"[\x00-\x20\x7f\\<>\"'`{}|^]")
 
 def check(url):
-    """সঠিক হলে (platform, url), নইলে None। শুধু allowlist-এর https লিংক।"""
+    """Return (platform, url) if valid, else None. Only https links on the allowlist.""" 
     if not isinstance(url, str) or not 12 <= len(url) <= 400 or _BAD.search(url):
         return None
     try:

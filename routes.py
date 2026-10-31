@@ -12,7 +12,7 @@ bp = Blueprint("api", __name__)
 def token():
     d = request.get_json(silent=True)
     if not isinstance(d, dict) or d.get("agree") is not True or d.get("v") != C.TERMS_VERSION:
-        return err(400, "শর্তাবলীতে সম্মতি দিন।")
+        return err(400, "Please accept the terms to continue.")
     return jsonify(token=make_token())
 
 @bp.post("/api/parse")
@@ -20,20 +20,20 @@ def token():
 def parse():
     d = request.get_json(silent=True)
     if not isinstance(d, dict) or d.get("website"):
-        return err(400, "অনুরোধ গ্রহণযোগ্য নয়।")
+        return err(400, "Request not accepted.")
     if not valid_token(request.headers.get("X-Token", "")):
-        return err(403, "সেশন শেষ। আবার চেষ্টা করুন।", "token")
+        return err(403, "Session expired. Please try again.", "token")
     res = check(d.get("url"))
     if not res:
-        return err(400, "লিংকটি সমর্থিত নয়। সমর্থিত সাইটের পূর্ণ https লিংক দিন।")
+        return err(400, "This link isn't supported. Paste the full https link from a supported site.")
     if d.get("platform") in C.PLATFORMS and d["platform"] != res[0]:
-        return err(400, "লিংকটি আপনার বাছাই করা সাইটের নয়।")
+        return err(400, "That link doesn't match the site you selected.")
     try:
         return jsonify(extract(res[1]))
     except Busy:
-        return err(503, "সার্ভার ব্যস্ত। কিছুক্ষণ পরে চেষ্টা করুন।")
+        return err(503, "The server is busy. Please try again shortly.")
     except Fail:
-        return err(422, "লিংকটি পড়া যায়নি। ভিডিওটি প্রাইভেট, অসমর্থিত বা সাময়িকভাবে ব্লক হতে পারে।")
+        return err(422, "Couldn't read this link. The video may be private, unsupported, or temporarily blocked.")
 
 @bp.get("/api/keepalive")
 def keepalive():

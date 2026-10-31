@@ -10,3 +10,7 @@ app.register_blueprint(bp)
 @app.get("/")
 def home():
     return send_from_directory("static", "index.html")
+
+@app.get("/favicon.ico")
+def favicon():
+    return send_from_directory("static", "favicon.ico", mimetype="image/x-icon")
