@@ -68,7 +68,6 @@
       <li>We comply with the DMCA and will remove features on a valid notice.</li>
       <li>Not affiliated with YouTube, TikTok, Meta, X or any other platform.</li>
     </ul>
-    <!-- Using a link to hide the modal via URL query parameter -->
     <a id="agree" href="?tos=1" style="display:inline-block; margin-top: 20px; padding: 10px 20px; background: white; color: black; text-decoration: none; font-weight: bold; font-family: inherit; font-size: 1rem; border-radius: 5px;">I agree</a>
     <button id="close" class="ghost" style="display:none; margin-top: 20px;">Close</button>
   </div>
@@ -82,12 +81,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
   let hint = "", busy = false;
 
-  // Check if user clicked the agree link (which reloads the page with ?tos=1)
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.has('tos')) {
     $("terms").style.display = "none";
     try { localStorage.setItem("tos", "agreed"); } catch(e){}
-    // Clean the URL without reloading
     window.history.replaceState({}, document.title, window.location.pathname);
   } else if (localStorage.getItem("tos") === "agreed") {
     $("terms").style.display = "none";
