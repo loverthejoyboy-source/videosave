@@ -4,17 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Clipkeep – Keep your videos close</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="theme-color" content="#4a33ff">
 <link rel="stylesheet" href="/static/style.css">
-<style>
-  .history-wrap { margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-  .history-chip { background: #f0f0f5; border: 1px solid #ddd; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #333; transition: 0.2s; }
-  .history-chip:hover { background: #e0e0e5; }
-  .history-chip span { color: #888; margin-left: 5px; font-weight: bold; }
-  
-  /* Hide elements initially if terms are not accepted */
-  body.terms-locked #url, body.terms-locked #go, body.terms-locked #sites, body.terms-locked #chip, body.terms-locked #pick { pointer-events: none; opacity: 0.5; }
-  body.terms-accepted #terms { display: none !important; }
-</style>
+
 </head>
 <body class="terms-locked">
 <div class="top">Download only content you own or have permission to save. <a href="#" id="tosLink2">Read the terms</a></div>
@@ -38,7 +33,9 @@
     </div>
     <input id="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     
-    <div id="historyContainer" class="history-wrap" style="display: none;"></div>
+    <!-- Local Storage History Section -->
+    <div id="historyContainer" class="history-wrap"></div>
+
     <p id="chip" class="status" hidden></p>
     <p id="pick" class="status" hidden>We couldn’t recognise this site. Tap the site your link is from:</p>
     <div id="sites" class="sites" role="group" aria-label="Supported platforms"></div>
@@ -71,221 +68,11 @@
       <li>We comply with the DMCA and will remove features on a valid notice.</li>
       <li>Not affiliated with YouTube, TikTok, Meta, X or any other platform.</li>
     </ul>
-    <!-- Changed button to anchor tag for no-JS bypass -->
-    <a id="agree-btn" href="#" style="display:inline-block; text-align:center; text-decoration:none; background:#fff; color:#000; padding:10px 20px; border:none; font-family:inherit; font-size:1rem; font-weight:bold; cursor:pointer; margin-top:20px;">I agree</a>
+    <a id="agree-btn" href="#">I agree</a>
     <button id="close" class="ghost" hidden>Close</button>
   </div>
 </div>
 
-<script>
-(() => {
-"use strict";
-const V = "1.1";
-const P = {youtube:["YouTube","youtube.com","youtu.be"],tiktok:["TikTok","tiktok.com"],instagram:["Instagram","instagram.com"],
-  facebook:["Facebook","facebook.com","fb.watch"],x:["X (Twitter)","x.com","twitter.com"],snapchat:["Snapchat","snapchat.com"],
-  vimeo:["Vimeo","vimeo.com"],dailymotion:["Dailymotion","dailymotion.com"],reddit:["Reddit","reddit.com"]};
-const $ = id => document.getElementById(id);
-let hint = "", busy = false;
-
-// --- TOS Logic without errors ---
-function checkTOS() {
-  try {
-    const tos = JSON.parse(localStorage.getItem("tos") || "{}");
-    if (tos.v === V) {
-      document.body.classList.remove("terms-locked");
-      document.body.classList.add("terms-accepted");
-      $("url").disabled = false;
-    }
-  } catch(e) {}
-}
-
-$("agree-btn").addEventListener("click", (e) => {
-  e.preventDefault();
-  try { localStorage.setItem("tos", JSON.stringify({v:V, t:Date.now()})); } catch(e) {}
-  document.body.classList.remove("terms-locked");
-  document.body.classList.add("terms-accepted");
-  $("url").disabled = false;
-  $("url").focus();
-});
-
-checkTOS();
-// --------------------------------
-
-function detect(u) {
-  if (!u) return null;
-  u = u.toLowerCase().trim();
-  
-  if (u.includes(".mp4") || u.includes(".m3u8") || u.includes(".webm") || u.includes(".mkv")) {
-    return "direct";
-  }
-  
-  if (u.includes("snapchat.com")) return "snapchat";
-  if (u.includes("youtube.com") || u.includes("youtu.be")) return "youtube";
-  if (u.includes("instagram.com")) return "instagram";
-  if (u.includes("tiktok.com")) return "tiktok";
-  if (u.includes("facebook.com") || u.includes("fb.watch")) return "facebook";
-  if (u.includes("twitter.com") || u.includes("x.com")) return "x";
-  
-  for (const k in P) {
-    if (P[k].slice(1).some(d => u.includes(d))) return k;
-  }
-  return "generic";
-}
-
-async function api(path, body) {
-  const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
-  let j = {}; try { j = await r.json(); } catch (e) {}
-  if (!r.ok) { const e = new Error(j.error || "Something went wrong."); e.kind = j.kind; throw e; }
-  return j;
-}
-
-function showErr(m) { $("err").textContent = m; $("err").hidden = !m; }
-
-function loadHistory() {
-  try {
-    const hist = JSON.parse(localStorage.getItem("clipkeep_history") || "[]");
-    const container = $("historyContainer");
-    if (hist.length === 0) { container.style.display = "none"; return; }
-    
-    container.innerHTML = "";
-    hist.forEach(url => {
-      const chip = document.createElement("div");
-      chip.className = "history-chip";
-      const shortUrl = url.length > 30 ? url.substring(0, 27) + "..." : url;
-      chip.innerHTML = `🔗 ${shortUrl} <span>×</span>`;
-      
-      chip.onclick = (e) => {
-        if(e.target.tagName === 'SPAN') return; 
-        $("url").value = url;
-        onInput();
-        go();
-      };
-      
-      chip.querySelector("span").onclick = (e) => {
-        e.stopPropagation();
-        const newHist = hist.filter(h => h !== url);
-        localStorage.setItem("clipkeep_history", JSON.stringify(newHist));
-        loadHistory();
-      };
-      
-      container.appendChild(chip);
-    });
-    container.style.display = "flex";
-  } catch (e) { console.error("History load failed", e); }
-}
-
-function saveHistory(url) {
-  if (!url) return;
-  try {
-    let hist = JSON.parse(localStorage.getItem("clipkeep_history") || "[]");
-    hist = hist.filter(h => h !== url);
-    hist.unshift(url);
-    hist = hist.slice(0, 10); 
-    localStorage.setItem("clipkeep_history", JSON.stringify(hist));
-    loadHistory();
-    alert("Link saved to your device history!");
-  } catch (e) {}
-}
-
-function onInput() {
-  const v = $("url").value.trim(), k = detect(v);
-  hint = ""; 
-  
-  $("chip").hidden = false;
-  if (k === "direct") {
-    $("chip").textContent = "✓ Direct Video File Detected";
-  } else if (k === "generic") {
-    $("chip").textContent = "✓ Generic Link Detected";
-  } else if (k) {
-    $("chip").textContent = "✓ " + P[k][0] + " detected";
-  } else {
-    $("chip").hidden = true;
-  }
-  
-  $("pick").hidden = true;
-  document.querySelectorAll("#sites button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
-  $("go").disabled = busy || !v; 
-  showErr("");
-}
-
-function buildPicker() {
-  for (const k in P) { 
-    const b = document.createElement("button"); b.type = "button"; b.textContent = P[k][0]; b.dataset.k = k;
-    b.onclick = () => { 
-      const v = $("url").value.trim(); 
-      if (v) { 
-        $("chip").textContent = "✓ " + P[k][0] + " selected manually";
-        $("chip").hidden = false;
-        $("go").disabled = false;
-      } 
-    };
-    $("sites").appendChild(b); 
-  }
-}
-
-function render(d, currentUrl) {
-  $("ti").textContent = d.title;
-  const th = $("th"); if (d.thumb) { th.src = d.thumb; th.hidden = false; } else th.hidden = true;
-  
-  const formatList = $("fm");
-  formatList.innerHTML = "";
-  
-  d.formats.forEach(f => {
-    const a = document.createElement("a"); 
-    a.href = f.url; a.target = "_blank"; a.rel = "noopener noreferrer nofollow";
-    a.textContent = f.label + " · " + f.ext.toUpperCase() + (f.size ? " · " + (f.size/1048576).toFixed(1) + " MB" : ""); 
-    a.style.display = "block";
-    a.style.marginBottom = "8px";
-    formatList.appendChild(a); 
-  });
-
-  const saveBtn = document.createElement("button");
-  saveBtn.textContent = "💾 Save Link to History";
-  saveBtn.style.marginTop = "15px";
-  saveBtn.style.padding = "10px 15px";
-  saveBtn.style.background = "#4a33ff";
-  saveBtn.style.color = "white";
-  saveBtn.style.border = "none";
-  saveBtn.style.borderRadius = "5px";
-  saveBtn.style.cursor = "pointer";
-  saveBtn.onclick = () => saveHistory(currentUrl);
-  formatList.appendChild(saveBtn);
-
-  $("res").hidden = false; $("res").scrollIntoView({behavior:"smooth", block:"nearest"});
-}
-
-async function go() {
-  busy = true; $("go").disabled = true; $("goLabel").textContent = "Working…"; $("load").hidden = false; $("res").hidden = true; showErr("");
-  const currentUrl = $("url").value.trim();
-  const body = {url: currentUrl};
-  
-  try {
-    const d = await api("/api/parse", body);
-    render(d, currentUrl);
-  } catch (e) { 
-    showErr(e.message); 
-  }
-  
-  busy = false; $("goLabel").textContent = "Download"; $("load").hidden = true; onInput();
-}
-
-function modal(readonly) { $("terms").hidden = false; $("close").hidden = !readonly; }
-
-buildPicker();
-loadHistory();
-
-$("url").addEventListener("input", onInput);
-$("go").addEventListener("click", go);
-$("url").addEventListener("keydown", e => { if (e.key === "Enter" && !$("go").disabled) go(); });
-["tosLink","tosLink2","tosLink3"].forEach(id => $(id).addEventListener("click", e => { e.preventDefault(); modal(true); }));
-$("close").addEventListener("click", () => { $("terms").hidden = true; });
-
-// Explicitly check if terms button click is working
-if(!localStorage.getItem("tos")) {
-  $("terms").hidden = false;
-}
-
-})();
-</script>
+<script src="/static/app.js"></script>
 </body>
 </html>
